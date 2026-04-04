@@ -9,12 +9,59 @@ import {
 import { MODEL_OPTIONS } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
 
+const HELP_TEXT = {
+  temperature:
+    "Controls randomness. Lower values stay more deterministic, while higher values allow more variation in tone and phrasing.",
+  topP:
+    "Limits sampling to the most likely token choices within a probability mass. Lower values make responses tighter and more focused.",
+  seed:
+    "Sets the sampling starting point. Reusing the same seed can help reproduce similar outputs when the rest of the settings stay the same.",
+};
+
 function formatHistoryDateParts(value) {
   const date = new Date(value);
   return {
     date: date.toLocaleDateString(),
     time: date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
   };
+}
+
+function normalizeShortRunId(value) {
+  if (!value) {
+    return "";
+  }
+  return formatShortId(value.replace(/^run_/, ""), 6);
+}
+
+function clampDecimalInput(value, { min, max }) {
+  if (value === "") {
+    return "";
+  }
+  if (!/^\d*\.?\d*$/.test(value)) {
+    return value.slice(0, -1);
+  }
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    return "";
+  }
+  if (parsed < min) {
+    return String(min);
+  }
+  if (parsed > max) {
+    return String(max);
+  }
+  return value;
+}
+
+function clampIntegerInput(value) {
+  if (value === "") {
+    return "";
+  }
+  const sanitized = value.replace(/[^\d-]/g, "");
+  if (sanitized === "-" || /^-?\d+$/.test(sanitized)) {
+    return sanitized;
+  }
+  return value.slice(0, -1);
 }
 
 export function PlaygroundSection(workspace) {
@@ -130,14 +177,14 @@ export function PlaygroundSection(workspace) {
           </div>
           <div className="button-row section-actions">
             <button
-              className="ghost-button"
+              className="secondary-button"
               onClick={() => handleSaveCase(normalizeTestCase(caseDraft))}
               type="button"
             >
               Save case
             </button>
             <button
-              className="ghost-button"
+              className="tertiary-button"
               onClick={() => {
                 const testCase = testCases[0];
                 if (testCase) {
@@ -190,14 +237,32 @@ export function PlaygroundSection(workspace) {
             />
             <div className="inline-grid">
               <Field
+                helpText={HELP_TEXT.temperature}
                 label="Temperature"
-                onChange={(value) => setGenerationSettings((current) => ({ ...current, temperature: value }))}
+                max="1"
+                min="0"
+                onChange={(value) =>
+                  setGenerationSettings((current) => ({
+                    ...current,
+                    temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                  }))
+                }
+                step="1"
                 type="number"
                 value={generationSettings.temperature}
               />
               <Field
+                helpText={HELP_TEXT.topP}
                 label="Top P"
-                onChange={(value) => setGenerationSettings((current) => ({ ...current, topP: value }))}
+                max="1"
+                min="0"
+                onChange={(value) =>
+                  setGenerationSettings((current) => ({
+                    ...current,
+                    topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                  }))
+                }
+                step="0.01"
                 type="number"
                 value={generationSettings.topP}
               />
@@ -208,18 +273,25 @@ export function PlaygroundSection(workspace) {
                 value={generationSettings.maxTokens}
               />
               <Field
+                helpText={HELP_TEXT.seed}
                 label="Seed"
-                onChange={(value) => setGenerationSettings((current) => ({ ...current, seed: value }))}
+                inputMode="numeric"
+                onChange={(value) =>
+                  setGenerationSettings((current) => ({
+                    ...current,
+                    seed: clampIntegerInput(value),
+                  }))
+                }
                 value={generationSettings.seed}
               />
             </div>
           </div>
           <div className="button-row section-actions">
-            <button className="ghost-button" onClick={handleSavePrompt} type="button">
+            <button className="secondary-button" onClick={handleSavePrompt} type="button">
               Save recipe
             </button>
             <button
-              className="ghost-button"
+              className="tertiary-button"
               onClick={() => {
                 const template = promptTemplates[0];
                 if (template) {
@@ -243,7 +315,7 @@ export function PlaygroundSection(workspace) {
             </div>
           </div>
           <button
-            className="ghost-button"
+            className="secondary-button"
             onClick={() =>
               setVariants((current) => [
                 ...current,
@@ -315,13 +387,27 @@ export function PlaygroundSection(workspace) {
                 </div>
                 <Field
                   label="Temperature override"
-                  onChange={(value) => updateVariant(variant.id, { temperature: value })}
+                  helpText={HELP_TEXT.temperature}
+                  max="1"
+                  min="0"
+                  onChange={(value) =>
+                    updateVariant(variant.id, {
+                      temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                    })
+                  }
+                  step="1"
                   type="number"
                   value={variant.temperature}
                 />
                 <Field
                   label="Top P override"
-                  onChange={(value) => updateVariant(variant.id, { topP: value })}
+                  helpText={HELP_TEXT.topP}
+                  max="1"
+                  min="0"
+                  onChange={(value) =>
+                    updateVariant(variant.id, { topP: clampDecimalInput(value, { min: 0, max: 1 }) })
+                  }
+                  step="0.01"
                   type="number"
                   value={variant.topP}
                 />
@@ -333,7 +419,9 @@ export function PlaygroundSection(workspace) {
                 />
                 <Field
                   label="Seed override"
-                  onChange={(value) => updateVariant(variant.id, { seed: value })}
+                  helpText={HELP_TEXT.seed}
+                  inputMode="numeric"
+                  onChange={(value) => updateVariant(variant.id, { seed: clampIntegerInput(value) })}
                   value={variant.seed}
                 />
               </div>
@@ -346,7 +434,7 @@ export function PlaygroundSection(workspace) {
             Generate
           </button>
           <button
-            className="ghost-button"
+            className="tertiary-button"
             onClick={() => downloadCsv("test-cases.csv", toCsv(testCases))}
             type="button"
           >
@@ -385,7 +473,7 @@ export function BatchSection(workspace) {
             Run batch
           </button>
           <button
-            className="ghost-button"
+            className="tertiary-button"
             onClick={() => downloadCsv("saved-runs.csv", toCsv(serializeRunRows(workspace.runs)))}
             type="button"
           >
@@ -464,11 +552,11 @@ export function BatchSection(workspace) {
             <>
               <div className="callout section-note">{importedCases.length} imported cases are staged.</div>
               <div className="button-row section-actions">
-                <button className="ghost-button" onClick={handleSaveImportedCases} type="button">
+                <button className="secondary-button" onClick={handleSaveImportedCases} type="button">
                   Save imported cases
                 </button>
                 <button
-                  className="ghost-button"
+                  className="tertiary-button"
                   onClick={() => downloadCsv("imported-cases.csv", toCsv(importedCases))}
                   type="button"
                 >
@@ -564,7 +652,7 @@ export function HistorySection(workspace) {
                       </div>
                     </div>
                     <div className="history-meta">
-                      <span>Run {formatShortId(run.id)}</span>
+                      <span>ID {normalizeShortRunId(run.id)}</span>
                       <span>{run.results?.length || 0} variants</span>
                     </div>
                     <div className="history-footer">
@@ -587,7 +675,7 @@ export function HistorySection(workspace) {
             <h3>Selected run</h3>
             {selectedRun ? (
               <button
-                className="ghost-button"
+                className="tertiary-button"
                 onClick={() => downloadCsv(`run-${selectedRun.id}.csv`, toCsv(serializeRunRows([selectedRun])))}
                 type="button"
               >
@@ -599,7 +687,7 @@ export function HistorySection(workspace) {
             <>
               <div className="callout">
                 <strong>{selectedRun.label}</strong> · {selectedRun.mode} ·{" "}
-                {selectedRun.results?.length || 0} results · run {formatShortId(selectedRun.id)}
+                {selectedRun.results?.length || 0} results · ID {normalizeShortRunId(selectedRun.id)}
               </div>
               <div className="result-grid section-actions">
                 {(selectedRun.results || []).map((result) => (
@@ -634,10 +722,13 @@ export function SettingsSection() {
   );
 }
 
-function Field({ label, onChange, type = "text", value, ...props }) {
+function Field({ helpText, label, onChange, type = "text", value, ...props }) {
   return (
     <div className="field-group">
-      <label>{label}</label>
+      <label className="field-label">
+        <span>{label}</span>
+        {helpText ? <HelpTooltip text={helpText} /> : null}
+      </label>
       <input onChange={(event) => onChange(event.target.value)} type={type} value={value} {...props} />
     </div>
   );
@@ -646,8 +737,23 @@ function Field({ label, onChange, type = "text", value, ...props }) {
 function TextAreaField({ label, onChange, value }) {
   return (
     <div className="field-group">
-      <label>{label}</label>
+      <label className="field-label">{label}</label>
       <textarea onChange={(event) => onChange(event.target.value)} value={value} />
     </div>
+  );
+}
+
+function HelpTooltip({ text }) {
+  return (
+    <span className="tooltip">
+      <button
+        aria-label="Show field help"
+        className="help-button"
+        data-tooltip={text}
+        type="button"
+      >
+        ?
+      </button>
+    </span>
   );
 }

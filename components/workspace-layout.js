@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { useState } from "react";
 
 import {
   BatchesIcon,
@@ -10,6 +11,7 @@ import {
   LogoutIcon,
   PlaygroundIcon,
   SettingsIcon,
+  SidebarToggleIcon,
   SunMoonIcon,
 } from "@/components/icons";
 
@@ -41,6 +43,17 @@ export default function WorkspaceLayout({
   stats,
 }) {
   const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState(
+    () => typeof window !== "undefined" && window.localStorage.getItem("dg-sidebar-collapsed") === "true",
+  );
+
+  function toggleSidebar() {
+    setIsCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem("dg-sidebar-collapsed", String(next));
+      return next;
+    });
+  }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -59,18 +72,28 @@ export default function WorkspaceLayout({
       </Head>
       <div className={`${displayFont.variable} ${bodyFont.variable} app-shell`}>
         <div className="app-frame">
-          <div className="workspace-shell">
-            <aside className="sidebar">
+          <div className={`workspace-shell ${isCollapsed ? "is-sidebar-collapsed" : ""}`}>
+            <aside className={`sidebar ${isCollapsed ? "is-collapsed" : ""}`}>
               <div className="sidebar-inner">
-                <div className="brand-lockup">
-                  <div className="brand-mark">
-                    <LogoGlyph />
+                <div className="sidebar-top">
+                  <div className="brand-lockup">
+                    <div className="brand-mark">
+                      <LogoGlyph />
+                    </div>
+                    <div className="brand-copy">
+                      <div className="brand-kicker">DG Workspace</div>
+                      <h1>Signal Forge</h1>
+                      <p>Fundraiser message evals</p>
+                    </div>
                   </div>
-                  <div className="brand-copy">
-                    <div className="brand-kicker">DG Workspace</div>
-                    <h1>Signal Forge</h1>
-                    <p>Fundraiser message evals</p>
-                  </div>
+                  <button
+                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    className="sidebar-toggle"
+                    onClick={toggleSidebar}
+                    type="button"
+                  >
+                    <SidebarToggleIcon collapsed={isCollapsed} />
+                  </button>
                 </div>
 
                 <nav className="sidebar-nav" aria-label="Primary">
@@ -92,14 +115,17 @@ export default function WorkspaceLayout({
                   })}
                 </nav>
 
-                <div className="sidebar-meta">
-                  {stats.map((item) => (
-                    <div className="sidebar-stat" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </div>
-                  ))}
-                </div>
+                <section className="sidebar-summary">
+                  <div className="sidebar-summary-title">Workspace status</div>
+                  <div className="sidebar-meta">
+                    {stats.map((item) => (
+                      <div className="sidebar-stat" key={item.label}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
 
                 <div className="sidebar-footer">
                   <button className="sidebar-link sidebar-utility" onClick={toggleTheme} type="button">

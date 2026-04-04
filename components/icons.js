@@ -16,6 +16,16 @@ function IconBase({ children, size = 18 }) {
   );
 }
 
+export function SidebarToggleIcon({ collapsed = false }) {
+  return (
+    <IconBase>
+      <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z" />
+      <path d="M9 4v16" />
+      {collapsed ? <path d="M14 12h4M16 10l2 2-2 2" /> : <path d="M14 12h4M16 10l-2 2 2 2" />}
+    </IconBase>
+  );
+}
+
 export function LogoGlyph() {
   return (
     <svg aria-hidden="true" fill="none" height="28" viewBox="0 0 32 32" width="28">
