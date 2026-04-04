@@ -1,15 +1,15 @@
 import WorkspaceLayout from "@/components/workspace-layout";
-import { PlaygroundSection } from "@/components/workspace-sections";
+import { BatchSection } from "@/components/workspace-sections";
 import WorkspaceStatus from "@/components/workspace-status";
 import { useWorkspaceState } from "@/lib/workspace";
 
-export default function PlaygroundPage() {
-  const workspace = useWorkspaceState("playground");
+export default function BatchesPage() {
+  const workspace = useWorkspaceState("batches");
 
   return (
     <WorkspaceLayout
-      currentPage="playground"
-      description="Generate and compare fundraiser messages with a focused playground."
+      currentPage="batches"
+      description="Run batch evaluations across saved and imported fundraiser cases."
       stats={[
         {
           label: "Generation",
@@ -17,14 +17,14 @@ export default function PlaygroundPage() {
         },
         { label: "Saved cases", value: workspace.testCases.length },
         { label: "Templates", value: workspace.promptTemplates.length },
-        { label: "Storage", value: workspace.storageMode },
+        { label: "Runs", value: workspace.runs.length },
       ]}
       theme={workspace.theme}
-      title="Playground · Signal Forge"
+      title="Batches · Signal Forge"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />
-      {!workspace.loading ? <PlaygroundSection {...workspace} /> : null}
+      {!workspace.loading ? <BatchSection {...workspace} /> : null}
     </WorkspaceLayout>
   );
 }

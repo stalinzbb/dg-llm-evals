@@ -42,32 +42,62 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>DG Eval Access</title>
+        <title>Login · Signal Forge</title>
       </Head>
       <div className={`${displayFont.variable} ${bodyFont.variable} auth-shell`}>
         <div className="auth-card">
-          <div className="section-label">Shared access</div>
-          <h1>Open the fundraiser eval workspace.</h1>
-          <p>
-            This is a lightweight shared gate for the hosted internal app. It is intentionally
-            simple and keeps the OpenRouter-backed workspace off the public internet.
-          </p>
-          <form className="field-grid" onSubmit={handleSubmit}>
-            <div className="field-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Shared team password"
-                type="password"
-                value={password}
-              />
+          <section className="auth-panel">
+            <div className="section-label">Private workspace</div>
+            <h1>Open Signal Forge.</h1>
+            <p>
+              A lightweight internal tool for prompt experiments, batch runs, and saved output
+              review across fundraiser messaging workflows.
+            </p>
+            <div className="auth-hero-grid">
+              <div className="auth-metric">
+                <span>Mode</span>
+                <strong>Playground and batches</strong>
+              </div>
+              <div className="auth-metric">
+                <span>Review</span>
+                <strong>History and scoring</strong>
+              </div>
+              <div className="auth-metric">
+                <span>Access</span>
+                <strong>Password protected</strong>
+              </div>
+              <div className="auth-metric">
+                <span>Models</span>
+                <strong>OpenRouter backed</strong>
+              </div>
             </div>
-            {error ? <div className="callout error-callout">{error}</div> : null}
-            <button className="primary-button" disabled={loading} type="submit">
-              {loading ? "Checking…" : "Enter workspace"}
-            </button>
-          </form>
+          </section>
+          <section className="auth-form-panel">
+            <div className="section-label">Sign in</div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", letterSpacing: "-0.04em" }}>
+              Shared team access
+            </h2>
+            <p style={{ marginTop: 10, marginBottom: 20 }}>
+              Enter the workspace password to continue.
+            </p>
+            <form className="field-grid" onSubmit={handleSubmit}>
+              <div className="field-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  autoFocus
+                  id="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Shared team password"
+                  type="password"
+                  value={password}
+                />
+              </div>
+              {error ? <div className="callout error-callout">{error}</div> : null}
+              <button className="primary-button" disabled={loading} type="submit">
+                {loading ? "Checking…" : "Enter workspace"}
+              </button>
+            </form>
+          </section>
         </div>
       </div>
     </>
