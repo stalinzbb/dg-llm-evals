@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   BatchesIcon,
@@ -43,9 +43,12 @@ export default function WorkspaceLayout({
   stats,
 }) {
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(
-    () => typeof window !== "undefined" && window.localStorage.getItem("dg-sidebar-collapsed") === "true",
-  );
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem("dg-sidebar-collapsed");
+    setIsCollapsed(storedValue === "true");
+  }, []);
 
   function toggleSidebar() {
     setIsCollapsed((current) => {
@@ -72,28 +75,29 @@ export default function WorkspaceLayout({
       </Head>
       <div className={`${displayFont.variable} ${bodyFont.variable} app-shell`}>
         <div className="app-frame">
+          <header className="topbar">
+            <div className="topbar-inner">
+              <div className="brand-lockup">
+                <div className="brand-mark">
+                  <LogoGlyph />
+                </div>
+                <div className="brand-copy">
+                  <h1>Evall</h1>
+                </div>
+              </div>
+              <button
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="sidebar-toggle"
+                onClick={toggleSidebar}
+                type="button"
+              >
+                <SidebarToggleIcon collapsed={isCollapsed} />
+              </button>
+            </div>
+          </header>
           <div className={`workspace-shell ${isCollapsed ? "is-sidebar-collapsed" : ""}`}>
             <aside className={`sidebar ${isCollapsed ? "is-collapsed" : ""}`}>
               <div className="sidebar-inner">
-                <div className="sidebar-top">
-                  <div className="brand-lockup">
-                    <div className="brand-mark">
-                      <LogoGlyph />
-                    </div>
-                    <div className="brand-copy">
-                      <h1>Evall</h1>
-                    </div>
-                  </div>
-                  <button
-                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    className="sidebar-toggle"
-                    onClick={toggleSidebar}
-                    type="button"
-                  >
-                    <SidebarToggleIcon collapsed={isCollapsed} />
-                  </button>
-                </div>
-
                 <nav className="sidebar-nav" aria-label="Primary">
                   {navItems.map((item) => {
                     const Icon = item.icon;
