@@ -81,9 +81,7 @@ export default function WorkspaceLayout({
                       <LogoGlyph />
                     </div>
                     <div className="brand-copy">
-                      <div className="brand-kicker">DG Workspace</div>
-                      <h1>Signal Forge</h1>
-                      <p>Fundraiser message evals</p>
+                      <h1>Evall</h1>
                     </div>
                   </div>
                   <button
