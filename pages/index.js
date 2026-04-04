@@ -11,7 +11,7 @@ import {
   MODEL_OPTIONS,
 } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
-import { normalizePromptTemplate, normalizeTestCase } from "@/lib/prompt";
+import { normalizeTestCase } from "@/lib/prompt";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -45,10 +45,11 @@ function downloadCsv(filename, rows) {
 }
 
 function createInitialVariant() {
+  const defaultModel = MODEL_OPTIONS.find((model) => !model.unavailable)?.value || "";
   return {
     id: crypto.randomUUID(),
     label: "Primary",
-    model: MODEL_OPTIONS[0],
+    model: defaultModel,
     promptSource: "current",
     temperature: "",
     topP: "",
@@ -97,6 +98,13 @@ function serializeRunRows(runs) {
   );
 }
 
+function formatModelOption(model) {
+  if (model.unavailable) {
+    return `${model.label} · unavailable`;
+  }
+  return `${model.label} · $${model.input}/$${model.output} per 1M in/out`;
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("playground");
   const [playgroundMode, setPlaygroundMode] = useState("single");
@@ -119,6 +127,7 @@ export default function Home() {
   const [historySearch, setHistorySearch] = useState("");
   const [batchSelection, setBatchSelection] = useState([]);
   const [importedCases, setImportedCases] = useState([]);
+  const [theme, setTheme] = useState("light");
 
   const deferredSearch = useDeferredValue(historySearch);
   const selectedRun =
@@ -149,6 +158,24 @@ export default function Home() {
   useEffect(() => {
     loadAppData();
   }, []);
+
+  useEffect(() => {
+    const storedTheme =
+      typeof window !== "undefined" ? window.localStorage.getItem("dg-evals-theme") : null;
+    if (storedTheme === "dark" || storedTheme === "light") {
+      setTheme(storedTheme);
+      document.documentElement.dataset.theme = storedTheme;
+    }
+  }, []);
+
+  function toggleTheme() {
+    setTheme((current) => {
+      const nextTheme = current === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = nextTheme;
+      window.localStorage.setItem("dg-evals-theme", nextTheme);
+      return nextTheme;
+    });
+  }
 
   async function handleSaveCase(singleCase) {
     setStatusMessage("");
@@ -284,9 +311,12 @@ export default function Home() {
       return true;
     }
     const haystack = [
+      run.id,
       run.label,
       run.mode,
-      ...(run.results || []).map((result) => `${result.caseName} ${result.model}`),
+      ...(run.results || []).map(
+        (result) => `${result.id} ${result.caseName} ${result.model} ${result.variantLabel}`,
+      ),
     ]
       .join(" ")
       .toLowerCase();
@@ -332,11 +362,9 @@ export default function Home() {
           <section className="panel-block">
             <h3>Fundraiser case</h3>
             <div className="field-grid">
-              <Field
-                label="Case name"
-                value={caseDraft.name}
-                onChange={(value) => setCaseDraft((current) => ({ ...current, name: value }))}
-              />
+              <div className="callout">
+                Saved and generated cases are named automatically from the organization and team.
+              </div>
               <Field
                 label="Organization name"
                 value={caseDraft.organizationName}
@@ -368,13 +396,6 @@ export default function Home() {
                 value={caseDraft.teamAffiliation}
                 onChange={(value) =>
                   setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
-                }
-              />
-              <Field
-                label="Message length instruction"
-                value={caseDraft.messageLength}
-                onChange={(value) =>
-                  setCaseDraft((current) => ({ ...current, messageLength: value }))
                 }
               />
               <div className="field-group">
@@ -429,10 +450,10 @@ export default function Home() {
           </section>
 
           <section className="panel-block">
-            <h3>Prompt + generation</h3>
+            <h3>Message recipe</h3>
             <div className="field-grid">
               <Field
-                label="Prompt name"
+                label="Recipe name"
                 value={promptDraft.name}
                 onChange={(value) => setPromptDraft((current) => ({ ...current, name: value }))}
               />
@@ -459,6 +480,13 @@ export default function Home() {
                 label="Suffix text"
                 value={promptDraft.suffixText}
                 onChange={(value) => setPromptDraft((current) => ({ ...current, suffixText: value }))}
+              />
+              <Field
+                label="Message length instruction"
+                value={promptDraft.messageLengthInstruction}
+                onChange={(value) =>
+                  setPromptDraft((current) => ({ ...current, messageLengthInstruction: value }))
+                }
               />
               <div className="inline-grid">
                 <Field
@@ -496,7 +524,7 @@ export default function Home() {
             </div>
             <div className="button-row" style={{ marginTop: 16 }}>
               <button className="ghost-button" onClick={handleSavePrompt} type="button">
-                Save prompt template
+                Save recipe
               </button>
               <button
                 className="ghost-button"
@@ -566,12 +594,23 @@ export default function Home() {
                     value={variant.label}
                     onChange={(value) => updateVariant(variant.id, { label: value })}
                   />
-                  <Field
-                    label="Model"
-                    list="model-options"
-                    value={variant.model}
-                    onChange={(value) => updateVariant(variant.id, { model: value })}
-                  />
+                  <div className="field-group">
+                    <label htmlFor={`${variant.id}-model`}>Model</label>
+                    <select
+                      id={`${variant.id}-model`}
+                      onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
+                      value={variant.model}
+                    >
+                      {MODEL_OPTIONS.map((model) => (
+                        <option disabled={model.unavailable} key={model.value} value={model.value}>
+                          {formatModelOption(model)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="field-help">
+                      Pricing shown is per 1M input / 1M output tokens.
+                    </div>
+                  </div>
                   <div className="field-group">
                     <label htmlFor={`${variant.id}-prompt-source`}>Prompt source</label>
                     <select
@@ -616,12 +655,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-
-          <datalist id="model-options">
-            {MODEL_OPTIONS.map((model) => (
-              <option key={model} value={model} />
-            ))}
-          </datalist>
 
           <div className="button-row" style={{ marginTop: 18 }}>
             <button className="primary-button" onClick={handleGenerate} type="button">
@@ -804,8 +837,8 @@ export default function Home() {
           <div>
             <h2>History</h2>
             <p>
-              Review saved outputs, export experiment rows, and keep rubric-based notes on which
-              prompts and models actually work.
+              Review saved outputs, export experiment rows, and search by run ID or output ID when
+              you need to reopen a specific experiment.
             </p>
           </div>
           <input
@@ -840,6 +873,7 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="status-line">
+                      <span>ID {run.id}</span>
                       <span>{new Date(run.createdAt).toLocaleString()}</span>
                       <span>{run.results?.length || 0} variants</span>
                       <span>{run.status}</span>
@@ -871,7 +905,7 @@ export default function Home() {
               <>
                 <div className="callout">
                   <strong>{selectedRun.label}</strong> · {selectedRun.mode} ·{" "}
-                  {selectedRun.results?.length || 0} results
+                  {selectedRun.results?.length || 0} results · run ID {selectedRun.id}
                 </div>
                 <div className="result-grid" style={{ marginTop: 18 }}>
                   {(selectedRun.results || []).map((result) => (
@@ -904,54 +938,13 @@ export default function Home() {
       </Head>
       <div className={`${displayFont.variable} ${bodyFont.variable} app-shell`}>
         <div className="app-frame">
-          <section className="hero">
-            <div className="hero-topline">
-              DG fundraiser tooling <span>·</span> prompt tuning workspace
-            </div>
-            <div className="hero-grid">
-              <div>
-                <h1>Cause statements with receipts.</h1>
-                <p>
-                  One workspace for single-use generation, side-by-side prompt comparison, batch
-                  experiments, and human scoring. It keeps the prompt, input snapshot, token
-                  metrics, and cost estimate attached to every output so you can tune without
-                  guessing.
-                </p>
-                <div className="platform-badges">
-                  <span className="badge">
-                    <strong>{platformStatus.openRouterConfigured ? "Live" : "Mock"}</strong>
-                    generation mode
-                  </span>
-                  <span className="badge">
-                    <strong>{storageMode}</strong>
-                    storage
-                  </span>
-                  <span className="badge">
-                    <strong>{platformStatus.gateEnabled ? "Enabled" : "Off"}</strong>
-                    access gate
-                  </span>
-                </div>
-              </div>
-              <div className="hero-stats">
-                <div className="hero-stat">
-                  <strong>Single</strong>
-                  <span>Use a real organization and generate one share-ready message immediately.</span>
-                </div>
-                <div className="hero-stat">
-                  <strong>Compare</strong>
-                  <span>Run multiple models or prompt variants side-by-side on the same input.</span>
-                </div>
-                <div className="hero-stat">
-                  <strong>Batch</strong>
-                  <span>Import CSVs, run a matrix, and export reproducible result rows.</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
           <div className="layout-grid">
             <aside className="nav-panel">
-              <div className="section-label">Workspace</div>
+              <div className="section-label">DG workspace</div>
+              <div className="sidebar-title">Fundraiser message evals</div>
+              <div className="field-help" style={{ marginBottom: 16 }}>
+                Single runs, comparisons, batch experiments, and saved scoring in one place.
+              </div>
               <div className="nav-list">
                 {[
                   ["playground", "Playground"],
@@ -969,7 +962,17 @@ export default function Home() {
                 ))}
               </div>
 
+              <div className="button-row" style={{ marginTop: 14 }}>
+                <button className="ghost-button" onClick={toggleTheme} type="button">
+                  {theme === "dark" ? "Switch to light" : "Switch to dark"}
+                </button>
+              </div>
+
               <div className="meta-stack">
+                <div className="meta-item">
+                  <span>Generation</span>
+                  <strong>{platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode"}</strong>
+                </div>
                 <div className="meta-item">
                   <span>Saved cases</span>
                   <strong>{testCases.length}</strong>
@@ -979,8 +982,8 @@ export default function Home() {
                   <strong>{promptTemplates.length}</strong>
                 </div>
                 <div className="meta-item">
-                  <span>Runs tracked</span>
-                  <strong>{runs.length}</strong>
+                  <span>Storage</span>
+                  <strong>{storageMode}</strong>
                 </div>
               </div>
             </aside>

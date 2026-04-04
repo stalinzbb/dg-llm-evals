@@ -56,7 +56,7 @@ export default function ResultCard({ result, onSaveRating }) {
         <div>
           <div className="result-title">{result.variantLabel}</div>
           <div className="field-help">
-            {result.model} · {result.promptTemplateName || "Current draft prompt"}
+            {result.model} · {result.promptTemplateName || "Current draft recipe"} · result ID {result.id}
           </div>
         </div>
         <span className="badge">
