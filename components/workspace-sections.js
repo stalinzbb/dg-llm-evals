@@ -247,7 +247,7 @@ export function PlaygroundSection(workspace) {
                     temperature: clampDecimalInput(value, { min: 0, max: 1 }),
                   }))
                 }
-                step="1"
+                step="0.01"
                 type="number"
                 value={generationSettings.temperature}
               />
@@ -395,7 +395,7 @@ export function PlaygroundSection(workspace) {
                       temperature: clampDecimalInput(value, { min: 0, max: 1 }),
                     })
                   }
-                  step="1"
+                  step="0.01"
                   type="number"
                   value={variant.temperature}
                 />
