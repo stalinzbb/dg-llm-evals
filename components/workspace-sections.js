@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ResultCard from "@/components/result-card";
 import {
@@ -98,6 +98,8 @@ export function PlaygroundSection(workspace) {
     handleSavePrompt,
     normalizeTestCase,
     playgroundMode,
+    playgroundGenerating,
+    playgroundRun,
     promptDraft,
     promptTemplates,
     setCaseDraft,
@@ -110,6 +112,7 @@ export function PlaygroundSection(workspace) {
     variants,
   } = workspace;
   const [causeTagError, setCauseTagError] = useState("");
+  const [isResultDrawerOpen, setIsResultDrawerOpen] = useState(false);
 
   const organizationTypeOptions = getOrganizationTypeOptions();
   const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
@@ -121,6 +124,12 @@ export function PlaygroundSection(workspace) {
     caseDraft.teamAffiliation,
     teamAffiliationConfig,
   );
+
+  useEffect(() => {
+    if (playgroundGenerating || playgroundRun) {
+      setIsResultDrawerOpen(true);
+    }
+  }, [playgroundGenerating, playgroundRun]);
 
   function handleCauseTagToggle(tag) {
     const exists = caseDraft.causeTags.includes(tag);
@@ -590,18 +599,67 @@ export function PlaygroundSection(workspace) {
         </div>
 
         <div className="button-row section-actions">
-          <button className="primary-button" onClick={handleGenerate} type="button">
-            Generate
+          <button
+            className="primary-button"
+            disabled={playgroundGenerating}
+            onClick={handleGenerate}
+            type="button"
+          >
+            {playgroundGenerating ? "Generating…" : "Generate"}
           </button>
           <button
             className="tertiary-button"
+            disabled={playgroundGenerating}
             onClick={() => downloadCsv("test-cases.csv", toCsv(testCases))}
             type="button"
           >
             Export saved cases
           </button>
         </div>
+
       </section>
+
+      {isResultDrawerOpen ? (
+        <>
+          <button
+            aria-label="Close latest result panel"
+            className="drawer-backdrop"
+            onClick={() => setIsResultDrawerOpen(false)}
+            type="button"
+          />
+          <aside className="playground-drawer">
+            <div className="playground-drawer-header">
+              <div>
+                <h3>Latest Result</h3>
+                <div className="field-help">
+                  Showing the current playground response only. It is not saved to history.
+                </div>
+              </div>
+              <button
+                className="ghost-button"
+                onClick={() => setIsResultDrawerOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="playground-drawer-body">
+              {playgroundGenerating ? (
+                <div className="empty-state">Generating results…</div>
+              ) : playgroundRun ? (
+                <div className="playground-result-stack">
+                  {(playgroundRun.results || []).map((result) => (
+                    <ResultCard key={result.id} result={result} showRating={false} />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">Run Generate to open the latest result here.</div>
+              )}
+            </div>
+          </aside>
+        </>
+      ) : null}
     </>
   );
 }

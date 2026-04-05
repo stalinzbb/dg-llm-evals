@@ -7,8 +7,9 @@ function formatCurrency(value) {
   return `$${value.toFixed(6)}`;
 }
 
-export default function ResultCard({ result, onSaveRating }) {
+export default function ResultCard({ result, onSaveRating, showRating = true }) {
   const [view, setView] = useState("cause");
+  const [showRequestDetails, setShowRequestDetails] = useState(false);
   const [rating, setRating] = useState({
     clarity: 3,
     specificity: 3,
@@ -104,61 +105,96 @@ export default function ResultCard({ result, onSaveRating }) {
         <span>{result.caseName}</span>
       </div>
 
-      <div className="rating-grid" style={{ marginTop: 18 }}>
-        <div className="inline-grid">
-          {[
-            ["clarity", "Clarity"],
-            ["specificity", "Specificity"],
-            ["fundraiserRelevance", "Fundraiser relevance"],
-            ["emotionalResonance", "Emotional resonance"],
-            ["brandSafety", "Brand safety"],
-            ["overall", "Overall"],
-          ].map(([key, label]) => (
-            <div className="field-group" key={key}>
-              <label htmlFor={`${result.id}-${key}`}>{label}</label>
-              <select
-                id={`${result.id}-${key}`}
-                value={rating[key]}
-                onChange={(event) =>
-                  setRating((current) => ({ ...current, [key]: event.target.value }))
-                }
-              >
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        <div className="field-group">
-          <label htmlFor={`${result.id}-notes`}>Review notes</label>
-          <textarea
-            id={`${result.id}-notes`}
-            value={rating.notes}
-            onChange={(event) =>
-              setRating((current) => ({ ...current, notes: event.target.value }))
-            }
-            placeholder="Why is this good or weak? What should change in the prompt?"
-          />
-        </div>
-        <div className="utility-row">
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-            <input
-              checked={rating.winner}
-              onChange={(event) =>
-                setRating((current) => ({ ...current, winner: event.target.checked }))
-              }
-              type="checkbox"
-            />
-            Mark as preferred output
-          </label>
-          <button className="ghost-button" disabled={saving} onClick={handleSave} type="button">
-            {saving ? "Saving…" : "Save rating"}
-          </button>
-        </div>
+      <div className="result-actions">
+        <button
+          className="ghost-button"
+          onClick={() => setShowRequestDetails((current) => !current)}
+          type="button"
+        >
+          {showRequestDetails ? "Hide Prompt Details" : "Show Prompt Details"}
+        </button>
       </div>
+
+      {showRequestDetails ? (
+        <div className="request-details">
+          <div className="request-detail-block">
+            <div className="request-detail-label">Model</div>
+            <div className="message-frame compact-frame">{result.model || "N/A"}</div>
+          </div>
+          <div className="request-detail-block">
+            <div className="request-detail-label">System Prompt</div>
+            <div className="message-frame compact-frame">{result.systemPrompt || "N/A"}</div>
+          </div>
+          <div className="request-detail-block">
+            <div className="request-detail-label">User Prompt</div>
+            <div className="message-frame compact-frame">{result.userPrompt || "N/A"}</div>
+          </div>
+          <div className="request-detail-block">
+            <div className="request-detail-label">Generation Settings</div>
+            <div className="message-frame compact-frame">
+              {JSON.stringify(result.generationSettings || {}, null, 2)}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showRating ? (
+        <div className="rating-grid" style={{ marginTop: 18 }}>
+          <div className="inline-grid">
+            {[
+              ["clarity", "Clarity"],
+              ["specificity", "Specificity"],
+              ["fundraiserRelevance", "Fundraiser relevance"],
+              ["emotionalResonance", "Emotional resonance"],
+              ["brandSafety", "Brand safety"],
+              ["overall", "Overall"],
+            ].map(([key, label]) => (
+              <div className="field-group" key={key}>
+                <label htmlFor={`${result.id}-${key}`}>{label}</label>
+                <select
+                  id={`${result.id}-${key}`}
+                  value={rating[key]}
+                  onChange={(event) =>
+                    setRating((current) => ({ ...current, [key]: event.target.value }))
+                  }
+                >
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          <div className="field-group">
+            <label htmlFor={`${result.id}-notes`}>Review notes</label>
+            <textarea
+              id={`${result.id}-notes`}
+              value={rating.notes}
+              onChange={(event) =>
+                setRating((current) => ({ ...current, notes: event.target.value }))
+              }
+              placeholder="Why is this good or weak? What should change in the prompt?"
+            />
+          </div>
+          <div className="utility-row">
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <input
+                checked={rating.winner}
+                onChange={(event) =>
+                  setRating((current) => ({ ...current, winner: event.target.checked }))
+                }
+                type="checkbox"
+              />
+              Mark as preferred output
+            </label>
+            <button className="ghost-button" disabled={saving} onClick={handleSave} type="button">
+              {saving ? "Saving…" : "Save rating"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
