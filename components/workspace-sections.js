@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { CloseIcon, TrashIcon } from "@/components/icons";
+import DrawerShell from "@/components/drawer-shell";
+import LibraryDrawer from "@/components/library-drawer";
 import ResultCard from "@/components/result-card";
+import WorkspacePageHeader from "@/components/workspace-page-header";
 import {
   createInitialVariant,
   downloadCsv,
@@ -164,32 +166,28 @@ export function PlaygroundSection(workspace) {
 
   return (
     <>
-      <div className="content-header">
-        <div>
-          <div className="section-label">Workspace</div>
-          <h2>Playground</h2>
-          <p>
-            Run a single prompt or compare multiple model and prompt variants on the same
-            fundraiser input.
-          </p>
-        </div>
-        <div className="button-row">
-          <button
-            className={`mode-button ${playgroundMode === "single" ? "is-active" : ""}`}
-            onClick={() => setPlaygroundMode("single")}
-            type="button"
-          >
-            Single output
-          </button>
-          <button
-            className={`mode-button ${playgroundMode === "compare" ? "is-active" : ""}`}
-            onClick={() => setPlaygroundMode("compare")}
-            type="button"
-          >
-            Comparison
-          </button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        actions={
+          <div className="button-row">
+            <button
+              className={`mode-button ${playgroundMode === "single" ? "is-active" : ""}`}
+              onClick={() => setPlaygroundMode("single")}
+              type="button"
+            >
+              Single output
+            </button>
+            <button
+              className={`mode-button ${playgroundMode === "compare" ? "is-active" : ""}`}
+              onClick={() => setPlaygroundMode("compare")}
+              type="button"
+            >
+              Comparison
+            </button>
+          </div>
+        }
+        description="Run a single prompt or compare multiple model and prompt variants on the same fundraiser input."
+        title="Playground"
+      />
 
       <div className="two-column">
         <section className="panel-block">
@@ -620,46 +618,24 @@ export function PlaygroundSection(workspace) {
       </section>
 
       {isResultDrawerOpen ? (
-        <>
-          <button
-            aria-label="Close latest result panel"
-            className="drawer-backdrop"
-            onClick={() => setIsResultDrawerOpen(false)}
-            type="button"
-          />
-          <aside className="playground-drawer">
-            <div className="playground-drawer-header">
-              <div>
-                <h3>Latest Result</h3>
-                <div className="field-help">
-                  Showing the current playground response only. It is not saved to history.
-                </div>
-              </div>
-              <button
-                aria-label="Close latest result panel"
-                className="ghost-button icon-button"
-                onClick={() => setIsResultDrawerOpen(false)}
-                type="button"
-              >
-                <CloseIcon />
-              </button>
+        <DrawerShell
+          ariaLabel="Close latest result panel"
+          helperText="Showing the current playground response only. It is not saved to history."
+          onClose={() => setIsResultDrawerOpen(false)}
+          title="Latest Result"
+        >
+          {playgroundGenerating ? (
+            <div className="empty-state">Generating results…</div>
+          ) : playgroundRun ? (
+            <div className="playground-result-stack">
+              {(playgroundRun.results || []).map((result) => (
+                <ResultCard key={result.id} result={result} showRating={false} />
+              ))}
             </div>
-
-            <div className="playground-drawer-body">
-              {playgroundGenerating ? (
-                <div className="empty-state">Generating results…</div>
-              ) : playgroundRun ? (
-                <div className="playground-result-stack">
-                  {(playgroundRun.results || []).map((result) => (
-                    <ResultCard key={result.id} result={result} showRating={false} />
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">Run Generate to open the latest result here.</div>
-              )}
-            </div>
-          </aside>
-        </>
+          ) : (
+            <div className="empty-state">Run Generate to open the latest result here.</div>
+          )}
+        </DrawerShell>
       ) : null}
 
       {isCaseLibraryOpen ? (
@@ -713,25 +689,24 @@ export function BatchSection(workspace) {
 
   return (
     <>
-      <div className="content-header">
-        <div>
-          <div className="section-label">Workspace</div>
-          <h2>Batches</h2>
-          <p>Run the same prompt stack across multiple saved or imported cases.</p>
-        </div>
-        <div className="button-row">
-          <button className="primary-button" onClick={handleBatchRun} type="button">
-            Run batch
-          </button>
-          <button
-            className="tertiary-button"
-            onClick={() => downloadCsv("saved-runs.csv", toCsv(serializeRunRows(workspace.runs)))}
-            type="button"
-          >
-            Export run rows
-          </button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        actions={
+          <div className="button-row">
+            <button className="primary-button" onClick={handleBatchRun} type="button">
+              Run batch
+            </button>
+            <button
+              className="tertiary-button"
+              onClick={() => downloadCsv("saved-runs.csv", toCsv(serializeRunRows(workspace.runs)))}
+              type="button"
+            >
+              Export run rows
+            </button>
+          </div>
+        }
+        description="Run the same prompt stack across multiple saved or imported cases."
+        title="Batches"
+      />
 
       <div className="two-column">
         <section className="panel-block">
@@ -867,19 +842,18 @@ export function HistorySection(workspace) {
 
   return (
     <>
-      <div className="content-header">
-        <div>
-          <div className="section-label">Workspace</div>
-          <h2>History</h2>
-          <p>Review saved outputs, search experiments, and reopen a specific run quickly.</p>
-        </div>
-        <input
-          className="search-input"
-          onChange={(event) => setHistorySearch(event.target.value)}
-          placeholder="Search runs, cases, or models"
-          value={historySearch}
-        />
-      </div>
+      <WorkspacePageHeader
+        actions={
+          <input
+            className="search-input"
+            onChange={(event) => setHistorySearch(event.target.value)}
+            placeholder="Search runs, cases, or models"
+            value={historySearch}
+          />
+        }
+        description="Review saved outputs, search experiments, and reopen a specific run quickly."
+        title="History"
+      />
 
       <div className="two-column history-layout">
         <section className="panel-block">
@@ -958,13 +932,10 @@ export function HistorySection(workspace) {
 export function SettingsSection() {
   return (
     <>
-      <div className="content-header">
-        <div>
-          <div className="section-label">Workspace</div>
-          <h2>Settings</h2>
-          <p>Reserved for workspace preferences and admin controls.</p>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        description="Reserved for workspace preferences and admin controls."
+        title="Settings"
+      />
       <section className="panel-block settings-empty">
         <h3>Nothing here yet</h3>
         <p>This page is intentionally empty for now.</p>
@@ -1006,93 +977,5 @@ function HelpTooltip({ text }) {
         ?
       </button>
     </span>
-  );
-}
-
-function LibraryDrawer({
-  emptyState,
-  helperText,
-  items,
-  onClose,
-  onDelete,
-  onSelect,
-  title,
-  type,
-}) {
-  return (
-    <>
-      <button
-        aria-label={`Close ${title.toLowerCase()}`}
-        className="drawer-backdrop"
-        onClick={onClose}
-        type="button"
-      />
-      <aside className="playground-drawer library-drawer">
-        <div className="playground-drawer-header">
-          <div>
-            <h3>{title}</h3>
-            <div className="field-help">{helperText}</div>
-          </div>
-          <button
-            aria-label={`Close ${title.toLowerCase()}`}
-            className="ghost-button icon-button"
-            onClick={onClose}
-            type="button"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        <div className="playground-drawer-body">
-          {items.length ? (
-            <div className="library-list">
-              {items.map((item, index) => {
-                const isDefault = index === 0;
-                const label = type === "case" ? item.name : item.name || "Untitled recipe";
-
-                return (
-                  <div className="library-item" key={item.id}>
-                    <button className="library-item-main" onClick={() => onSelect(item)} type="button">
-                      <div className="library-item-row">
-                        <strong>{label}</strong>
-                        {isDefault ? <span className="tag-chip tag-chip-muted">Default</span> : null}
-                      </div>
-                      {type === "case" ? (
-                        <>
-                          <div className="library-item-meta">
-                            <span>{item.organizationType}</span>
-                            <span>{item.teamActivity}</span>
-                            <span>{item.teamAffiliation}</span>
-                          </div>
-                          <div className="library-item-copy">
-                            {item.causeTags.join(", ")} · {item.messageLength}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="library-item-copy">
-                          {item.messageLengthInstruction || "No message length instruction"}
-                        </div>
-                      )}
-                    </button>
-                    {!isDefault ? (
-                      <button
-                        aria-label={`Delete ${label}`}
-                        className="ghost-button icon-button library-item-delete"
-                        onClick={() => onDelete(item.id)}
-                        type="button"
-                      >
-                        <TrashIcon />
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state">{emptyState}</div>
-          )}
-        </div>
-      </aside>
-    </>
   );
 }
