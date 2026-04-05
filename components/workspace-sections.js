@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import ResultCard from "@/components/result-card";
 import {
   createInitialVariant,
@@ -107,6 +109,7 @@ export function PlaygroundSection(workspace) {
     updateVariant,
     variants,
   } = workspace;
+  const [causeTagError, setCauseTagError] = useState("");
 
   const organizationTypeOptions = getOrganizationTypeOptions();
   const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
@@ -118,6 +121,30 @@ export function PlaygroundSection(workspace) {
     caseDraft.teamAffiliation,
     teamAffiliationConfig,
   );
+
+  function handleCauseTagToggle(tag) {
+    const exists = caseDraft.causeTags.includes(tag);
+
+    if (exists) {
+      setCaseDraft((current) => ({
+        ...current,
+        causeTags: current.causeTags.filter((item) => item !== tag),
+      }));
+      setCauseTagError("");
+      return;
+    }
+
+    if (caseDraft.causeTags.length >= 3) {
+      setCauseTagError("Select up to 3 cause tags.");
+      return;
+    }
+
+    setCaseDraft((current) => ({
+      ...current,
+      causeTags: [...current.causeTags, tag],
+    }));
+    setCauseTagError("");
+  }
 
   return (
     <>
@@ -286,7 +313,6 @@ export function PlaygroundSection(workspace) {
               <section className="subsection-block">
                 <h4>Cause Tags</h4>
                 <div className="field-group">
-                  <label>Cause tags</label>
                   <div className="chip-grid">
                     {causeTagOptions.map((tag) => {
                       const selected = caseDraft.causeTags.includes(tag);
@@ -294,15 +320,7 @@ export function PlaygroundSection(workspace) {
                         <button
                           className={`chip-button ${selected ? "is-selected" : ""}`}
                           key={tag}
-                          onClick={() =>
-                            setCaseDraft((current) => {
-                              const exists = current.causeTags.includes(tag);
-                              const nextTags = exists
-                                ? current.causeTags.filter((item) => item !== tag)
-                                : [...current.causeTags, tag].slice(0, 3);
-                              return { ...current, causeTags: nextTags };
-                            })
-                          }
+                          onClick={() => handleCauseTagToggle(tag)}
                           type="button"
                         >
                           {tag}
@@ -310,7 +328,9 @@ export function PlaygroundSection(workspace) {
                       );
                     })}
                   </div>
-                  <div className="field-help">Up to 3 tags in the prompt payload.</div>
+                  <div className={`field-help ${causeTagError ? "field-help-error" : ""}`}>
+                    {causeTagError || "Up to 3 tags in the prompt payload."}
+                  </div>
                 </div>
               </section>
             </div>
