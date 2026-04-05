@@ -476,7 +476,7 @@ export function PlaygroundSection(workspace) {
       <section className="panel-block page-section">
         <div className="variant-row section-head">
           <div>
-            <h3>Model Customization</h3>
+            <h3>Model Variations</h3>
             <div className="field-help">
               In single mode the first variant is used. In compare mode each row is generated side by side.
             </div>
