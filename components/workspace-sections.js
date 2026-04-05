@@ -117,7 +117,7 @@ export function PlaygroundSection(workspace) {
 
       <div className="two-column">
         <section className="panel-block">
-          <h3>Fundraiser case</h3>
+          <h3>Data Variables</h3>
           <div className="field-grid">
             <div className="callout">
               Saved and generated cases are named automatically from the organization and team.
@@ -199,7 +199,7 @@ export function PlaygroundSection(workspace) {
         </section>
 
         <section className="panel-block">
-          <h3>Message recipe</h3>
+          <h3>Prompt Structure</h3>
           <div className="field-grid">
             <Field
               label="Recipe name"
@@ -309,7 +309,7 @@ export function PlaygroundSection(workspace) {
       <section className="panel-block page-section">
         <div className="variant-row section-head">
           <div>
-            <h3>Variants</h3>
+            <h3>Model Customization</h3>
             <div className="field-help">
               In single mode the first variant is used. In compare mode each row is generated side by side.
             </div>
