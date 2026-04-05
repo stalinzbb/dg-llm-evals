@@ -8,6 +8,12 @@ import {
 } from "@/lib/workspace";
 import { MODEL_OPTIONS } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
+import {
+  getOrganizationTypeOptions,
+  getTeamActivityConfig,
+  getTeamAffiliationConfig,
+  normalizeTaxonomySelection,
+} from "@/lib/taxonomy";
 
 const HELP_TEXT = {
   temperature:
@@ -64,6 +70,22 @@ function clampIntegerInput(value) {
   return value.slice(0, -1);
 }
 
+function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
+  if (teamAffiliationConfig.mode !== "select") {
+    return "";
+  }
+
+  if (teamAffiliationConfig.options.includes(teamAffiliation)) {
+    return teamAffiliation;
+  }
+
+  if (teamAffiliationConfig.allowsOther && teamAffiliation) {
+    return "Other";
+  }
+
+  return "";
+}
+
 export function PlaygroundSection(workspace) {
   const {
     causeTagOptions,
@@ -85,6 +107,17 @@ export function PlaygroundSection(workspace) {
     updateVariant,
     variants,
   } = workspace;
+
+  const organizationTypeOptions = getOrganizationTypeOptions();
+  const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
+  const teamAffiliationConfig = getTeamAffiliationConfig(
+    caseDraft.organizationType,
+    caseDraft.teamActivity,
+  );
+  const affiliationSelectValue = getAffiliationSelectValue(
+    caseDraft.teamAffiliation,
+    teamAffiliationConfig,
+  );
 
   return (
     <>
@@ -122,57 +155,164 @@ export function PlaygroundSection(workspace) {
             <div className="callout">
               Saved and generated cases are named automatically from the organization and team.
             </div>
-            <Field
-              label="Organization name"
-              onChange={(value) => setCaseDraft((current) => ({ ...current, organizationName: value }))}
-              value={caseDraft.organizationName}
-            />
-            <Field
-              label="Team name"
-              onChange={(value) => setCaseDraft((current) => ({ ...current, teamName: value }))}
-              value={caseDraft.teamName}
-            />
-            <Field
-              label="Organization type"
-              onChange={(value) => setCaseDraft((current) => ({ ...current, organizationType: value }))}
-              value={caseDraft.organizationType}
-            />
-            <Field
-              label="Team activity"
-              onChange={(value) => setCaseDraft((current) => ({ ...current, teamActivity: value }))}
-              value={caseDraft.teamActivity}
-            />
-            <Field
-              label="Team affiliation"
-              onChange={(value) => setCaseDraft((current) => ({ ...current, teamAffiliation: value }))}
-              value={caseDraft.teamAffiliation}
-            />
-            <div className="field-group">
-              <label>Cause tags</label>
-              <div className="chip-grid">
-                {causeTagOptions.map((tag) => {
-                  const selected = caseDraft.causeTags.includes(tag);
-                  return (
-                    <button
-                      className={`chip-button ${selected ? "is-selected" : ""}`}
-                      key={tag}
-                      onClick={() =>
-                        setCaseDraft((current) => {
-                          const exists = current.causeTags.includes(tag);
-                          const nextTags = exists
-                            ? current.causeTags.filter((item) => item !== tag)
-                            : [...current.causeTags, tag].slice(0, 3);
-                          return { ...current, causeTags: nextTags };
-                        })
+            <div className="subsection-stack">
+              <section className="subsection-block">
+                <h4>Event Names</h4>
+                <div className="field-grid">
+                  <Field
+                    label="Organization name"
+                    onChange={(value) =>
+                      setCaseDraft((current) => ({ ...current, organizationName: value }))
+                    }
+                    value={caseDraft.organizationName}
+                  />
+                  <Field
+                    label="Team name"
+                    onChange={(value) => setCaseDraft((current) => ({ ...current, teamName: value }))}
+                    value={caseDraft.teamName}
+                  />
+                </div>
+              </section>
+
+              <section className="subsection-block">
+                <h4>Taxonomy Info</h4>
+                <div className="field-grid">
+                  <div className="field-group">
+                    <label htmlFor="organization-type">Organization Type</label>
+                    <select
+                      id="organization-type"
+                      onChange={(event) =>
+                        setCaseDraft((current) => ({
+                          ...current,
+                          ...normalizeTaxonomySelection({
+                            ...current,
+                            organizationType: event.target.value,
+                            teamActivity: "",
+                            teamAffiliation: "",
+                          }),
+                        }))
                       }
-                      type="button"
+                      value={caseDraft.organizationType}
                     >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="field-help">Up to 3 tags in the prompt payload.</div>
+                      {organizationTypeOptions.map((organizationType) => (
+                        <option key={organizationType} value={organizationType}>
+                          {organizationType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {teamActivityConfig.mode === "select" ? (
+                    <div className="field-group">
+                      <label htmlFor="team-activity">Team Activity</label>
+                      <select
+                        id="team-activity"
+                        onChange={(event) =>
+                          setCaseDraft((current) => ({
+                            ...current,
+                            ...normalizeTaxonomySelection({
+                              ...current,
+                              teamActivity: event.target.value,
+                              teamAffiliation: "",
+                            }),
+                          }))
+                        }
+                        value={caseDraft.teamActivity}
+                      >
+                        {teamActivityConfig.options.map((teamActivity) => (
+                          <option key={teamActivity} value={teamActivity}>
+                            {teamActivity}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <Field
+                      label="Team Activity"
+                      onChange={(value) => setCaseDraft((current) => ({ ...current, teamActivity: value }))}
+                      value={caseDraft.teamActivity}
+                    />
+                  )}
+
+                  {teamAffiliationConfig.mode === "select" ? (
+                    <div className="field-group">
+                      <label htmlFor="team-affiliation">Team Affiliation</label>
+                      <select
+                        id="team-affiliation"
+                        onChange={(event) =>
+                          setCaseDraft((current) => ({
+                            ...current,
+                            teamAffiliation:
+                              event.target.value === "Other" ? "Other" : event.target.value,
+                          }))
+                        }
+                        value={affiliationSelectValue}
+                      >
+                        <option value="" disabled>
+                          Select affiliation
+                        </option>
+                        {teamAffiliationConfig.options.map((teamAffiliation) => (
+                          <option key={teamAffiliation} value={teamAffiliation}>
+                            {teamAffiliation}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="field-help">
+                        Options are filtered from the taxonomy CSV for the selected organization type and activity.
+                      </div>
+                    </div>
+                  ) : (
+                    <Field
+                      label="Team Affiliation"
+                      onChange={(value) =>
+                        setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
+                      }
+                      value={caseDraft.teamAffiliation}
+                    />
+                  )}
+
+                  {teamAffiliationConfig.mode === "select" && affiliationSelectValue === "Other" ? (
+                    <Field
+                      label="Other Team Affiliation"
+                      onChange={(value) =>
+                        setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
+                      }
+                      value={caseDraft.teamAffiliation === "Other" ? "" : caseDraft.teamAffiliation}
+                    />
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="subsection-block">
+                <h4>Cause Tags</h4>
+                <div className="field-group">
+                  <label>Cause tags</label>
+                  <div className="chip-grid">
+                    {causeTagOptions.map((tag) => {
+                      const selected = caseDraft.causeTags.includes(tag);
+                      return (
+                        <button
+                          className={`chip-button ${selected ? "is-selected" : ""}`}
+                          key={tag}
+                          onClick={() =>
+                            setCaseDraft((current) => {
+                              const exists = current.causeTags.includes(tag);
+                              const nextTags = exists
+                                ? current.causeTags.filter((item) => item !== tag)
+                                : [...current.causeTags, tag].slice(0, 3);
+                              return { ...current, causeTags: nextTags };
+                            })
+                          }
+                          type="button"
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="field-help">Up to 3 tags in the prompt payload.</div>
+                </div>
+              </section>
             </div>
           </div>
           <div className="button-row section-actions">
@@ -188,7 +328,7 @@ export function PlaygroundSection(workspace) {
               onClick={() => {
                 const testCase = testCases[0];
                 if (testCase) {
-                  setCaseDraft(testCase);
+                  setCaseDraft(normalizeTestCase(testCase));
                 }
               }}
               type="button"

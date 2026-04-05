@@ -966,6 +966,28 @@ td {
   margin-top: 16px;
 }
 
+.subsection-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.subsection-block {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+}
+
+.subsection-block h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .section-head {
   margin-bottom: 16px;
 }
