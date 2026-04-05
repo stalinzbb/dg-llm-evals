@@ -1119,19 +1119,18 @@ td {
 
 .playground-drawer {
   position: fixed;
-  top: 84px;
-  right: 18px;
-  bottom: 18px;
+  top: var(--topbar-height);
+  right: 0;
+  bottom: 0;
   z-index: 40;
-  width: min(560px, calc(100vw - 36px));
+  width: min(560px, 100vw);
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 18px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+  padding: 20px 20px 20px 18px;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-strong) 96%, transparent);
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(14px);
 }
 
@@ -1151,6 +1150,17 @@ td {
 .playground-result-stack {
   display: grid;
   gap: 18px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
 }
 
   .sidebar.is-collapsed .brand-copy,
@@ -1185,10 +1195,13 @@ td {
 
   .playground-drawer {
     top: 74px;
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
+    right: 0;
+    bottom: 0;
+    left: 0;
     width: auto;
+    padding: 18px 16px;
+    border-left: 1px solid var(--line);
+    border-radius: 0;
   }
 
   .sidebar {

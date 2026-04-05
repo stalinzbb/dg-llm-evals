@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { CloseIcon } from "@/components/icons";
 import ResultCard from "@/components/result-card";
 import {
   createInitialVariant,
@@ -636,11 +637,12 @@ export function PlaygroundSection(workspace) {
                 </div>
               </div>
               <button
-                className="ghost-button"
+                aria-label="Close latest result panel"
+                className="ghost-button icon-button"
                 onClick={() => setIsResultDrawerOpen(false)}
                 type="button"
               >
-                Close
+                <CloseIcon />
               </button>
             </div>
 
