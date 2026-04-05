@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, TrashIcon } from "@/components/icons";
 import ResultCard from "@/components/result-card";
 import {
   createInitialVariant,
@@ -96,7 +96,9 @@ export function PlaygroundSection(workspace) {
     generationSettings,
     handleGenerate,
     handleSaveCase,
+    handleDeleteCase,
     handleSavePrompt,
+    handleDeletePrompt,
     normalizeTestCase,
     playgroundMode,
     playgroundGenerating,
@@ -111,9 +113,13 @@ export function PlaygroundSection(workspace) {
     testCases,
     updateVariant,
     variants,
+    canSaveCase,
+    canSavePrompt,
   } = workspace;
   const [causeTagError, setCauseTagError] = useState("");
   const [isResultDrawerOpen, setIsResultDrawerOpen] = useState(false);
+  const [isCaseLibraryOpen, setIsCaseLibraryOpen] = useState(false);
+  const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
 
   const organizationTypeOptions = getOrganizationTypeOptions();
   const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
@@ -189,9 +195,6 @@ export function PlaygroundSection(workspace) {
         <section className="panel-block">
           <h3>Data Variables</h3>
           <div className="field-grid">
-            <div className="callout">
-              Saved and generated cases are named automatically from the organization and team.
-            </div>
             <div className="subsection-stack">
               <section className="subsection-block">
                 <h4>Event Names</h4>
@@ -348,6 +351,7 @@ export function PlaygroundSection(workspace) {
           <div className="button-row section-actions">
             <button
               className="secondary-button"
+              disabled={!canSaveCase}
               onClick={() => handleSaveCase(normalizeTestCase(caseDraft))}
               type="button"
             >
@@ -355,15 +359,10 @@ export function PlaygroundSection(workspace) {
             </button>
             <button
               className="tertiary-button"
-              onClick={() => {
-                const testCase = testCases[0];
-                if (testCase) {
-                  setCaseDraft(normalizeTestCase(testCase));
-                }
-              }}
+              onClick={() => setIsCaseLibraryOpen(true)}
               type="button"
             >
-              Load first saved case
+              View all cases
             </button>
           </div>
         </section>
@@ -457,20 +456,20 @@ export function PlaygroundSection(workspace) {
             </div>
           </div>
           <div className="button-row section-actions">
-            <button className="secondary-button" onClick={handleSavePrompt} type="button">
+            <button
+              className="secondary-button"
+              disabled={!canSavePrompt}
+              onClick={handleSavePrompt}
+              type="button"
+            >
               Save recipe
             </button>
             <button
               className="tertiary-button"
-              onClick={() => {
-                const template = promptTemplates[0];
-                if (template) {
-                  setPromptDraft(template);
-                }
-              }}
+              onClick={() => setIsPromptLibraryOpen(true)}
               type="button"
             >
-              Load first saved template
+              View all recipes
             </button>
           </div>
         </section>
@@ -661,6 +660,38 @@ export function PlaygroundSection(workspace) {
             </div>
           </aside>
         </>
+      ) : null}
+
+      {isCaseLibraryOpen ? (
+        <LibraryDrawer
+          emptyState="No saved cases yet."
+          helperText="Select a saved case to load it into the editor."
+          items={testCases}
+          onClose={() => setIsCaseLibraryOpen(false)}
+          onDelete={handleDeleteCase}
+          onSelect={(testCase) => {
+            setCaseDraft(normalizeTestCase(testCase));
+            setIsCaseLibraryOpen(false);
+          }}
+          title="Saved Cases"
+          type="case"
+        />
+      ) : null}
+
+      {isPromptLibraryOpen ? (
+        <LibraryDrawer
+          emptyState="No saved recipes yet."
+          helperText="Select a saved recipe to load it into the prompt editor."
+          items={promptTemplates}
+          onClose={() => setIsPromptLibraryOpen(false)}
+          onDelete={handleDeletePrompt}
+          onSelect={(template) => {
+            setPromptDraft(template);
+            setIsPromptLibraryOpen(false);
+          }}
+          title="Saved Recipes"
+          type="prompt"
+        />
       ) : null}
     </>
   );
@@ -975,5 +1006,93 @@ function HelpTooltip({ text }) {
         ?
       </button>
     </span>
+  );
+}
+
+function LibraryDrawer({
+  emptyState,
+  helperText,
+  items,
+  onClose,
+  onDelete,
+  onSelect,
+  title,
+  type,
+}) {
+  return (
+    <>
+      <button
+        aria-label={`Close ${title.toLowerCase()}`}
+        className="drawer-backdrop"
+        onClick={onClose}
+        type="button"
+      />
+      <aside className="playground-drawer library-drawer">
+        <div className="playground-drawer-header">
+          <div>
+            <h3>{title}</h3>
+            <div className="field-help">{helperText}</div>
+          </div>
+          <button
+            aria-label={`Close ${title.toLowerCase()}`}
+            className="ghost-button icon-button"
+            onClick={onClose}
+            type="button"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="playground-drawer-body">
+          {items.length ? (
+            <div className="library-list">
+              {items.map((item, index) => {
+                const isDefault = index === 0;
+                const label = type === "case" ? item.name : item.name || "Untitled recipe";
+
+                return (
+                  <div className="library-item" key={item.id}>
+                    <button className="library-item-main" onClick={() => onSelect(item)} type="button">
+                      <div className="library-item-row">
+                        <strong>{label}</strong>
+                        {isDefault ? <span className="tag-chip tag-chip-muted">Default</span> : null}
+                      </div>
+                      {type === "case" ? (
+                        <>
+                          <div className="library-item-meta">
+                            <span>{item.organizationType}</span>
+                            <span>{item.teamActivity}</span>
+                            <span>{item.teamAffiliation}</span>
+                          </div>
+                          <div className="library-item-copy">
+                            {item.causeTags.join(", ")} · {item.messageLength}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="library-item-copy">
+                          {item.messageLengthInstruction || "No message length instruction"}
+                        </div>
+                      )}
+                    </button>
+                    {!isDefault ? (
+                      <button
+                        aria-label={`Delete ${label}`}
+                        className="ghost-button icon-button library-item-delete"
+                        onClick={() => onDelete(item.id)}
+                        type="button"
+                      >
+                        <TrashIcon />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">{emptyState}</div>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }
