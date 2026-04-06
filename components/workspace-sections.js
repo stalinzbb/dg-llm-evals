@@ -11,7 +11,7 @@ import {
   formatShortId,
   serializeRunRows,
 } from "@/lib/workspace";
-import { MODEL_OPTIONS } from "@/lib/constants";
+import { DEFAULT_GENERATION_SETTINGS, MODEL_OPTIONS } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
 import {
   getOrganizationTypeOptions,
@@ -122,6 +122,7 @@ export function PlaygroundSection(workspace) {
   const [isResultDrawerOpen, setIsResultDrawerOpen] = useState(false);
   const [isCaseLibraryOpen, setIsCaseLibraryOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
+  const [isSharedModelParamsEnabled, setIsSharedModelParamsEnabled] = useState(false);
 
   const organizationTypeOptions = getOrganizationTypeOptions();
   const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
@@ -162,6 +163,27 @@ export function PlaygroundSection(workspace) {
       causeTags: [...current.causeTags, tag],
     }));
     setCauseTagError("");
+  }
+
+  function handleSharedModelParamsToggle(enabled) {
+    setIsSharedModelParamsEnabled(enabled);
+    if (!enabled) {
+      setGenerationSettings(DEFAULT_GENERATION_SETTINGS);
+    }
+  }
+
+  function handleVariantOverrideToggle(variantId, enabled) {
+    updateVariant(variantId, {
+      useOverrides: enabled,
+      ...(enabled
+        ? {}
+        : {
+            temperature: "",
+            topP: "",
+            maxTokens: "",
+            seed: "",
+          }),
+    });
   }
 
   return (
@@ -366,92 +388,123 @@ export function PlaygroundSection(workspace) {
         </section>
 
         <section className="panel-block">
-          <h3>Prompt Structure</h3>
-          <div className="field-grid">
-            <Field
-              label="Recipe name"
-              onChange={(value) => setPromptDraft((current) => ({ ...current, name: value }))}
-              value={promptDraft.name}
-            />
-            <TextAreaField
-              label="System prompt"
-              onChange={(value) => setPromptDraft((current) => ({ ...current, systemPrompt: value }))}
-              value={promptDraft.systemPrompt}
-            />
-            <TextAreaField
-              label="User prompt template"
-              onChange={(value) =>
-                setPromptDraft((current) => ({ ...current, userPromptTemplate: value }))
-              }
-              value={promptDraft.userPromptTemplate}
-            />
-            <Field
-              label="Prefix text"
-              onChange={(value) => setPromptDraft((current) => ({ ...current, prefixText: value }))}
-              value={promptDraft.prefixText}
-            />
-            <Field
-              label="Suffix text"
-              onChange={(value) => setPromptDraft((current) => ({ ...current, suffixText: value }))}
-              value={promptDraft.suffixText}
-            />
-            <Field
-              label="Message length instruction"
-              onChange={(value) =>
-                setPromptDraft((current) => ({ ...current, messageLengthInstruction: value }))
-              }
-              value={promptDraft.messageLengthInstruction}
-            />
-            <div className="inline-grid">
-              <Field
-                helpText={HELP_TEXT.temperature}
-                label="Temperature"
-                max="1"
-                min="0"
-                onChange={(value) =>
-                  setGenerationSettings((current) => ({
-                    ...current,
-                    temperature: clampDecimalInput(value, { min: 0, max: 1 }),
-                  }))
-                }
-                step="0.01"
-                type="number"
-                value={generationSettings.temperature}
-              />
-              <Field
-                helpText={HELP_TEXT.topP}
-                label="Top P"
-                max="1"
-                min="0"
-                onChange={(value) =>
-                  setGenerationSettings((current) => ({
-                    ...current,
-                    topP: clampDecimalInput(value, { min: 0, max: 1 }),
-                  }))
-                }
-                step="0.01"
-                type="number"
-                value={generationSettings.topP}
-              />
-              <Field
-                label="Max tokens"
-                onChange={(value) => setGenerationSettings((current) => ({ ...current, maxTokens: value }))}
-                type="number"
-                value={generationSettings.maxTokens}
-              />
-              <Field
-                helpText={HELP_TEXT.seed}
-                label="Seed"
-                inputMode="numeric"
-                onChange={(value) =>
-                  setGenerationSettings((current) => ({
-                    ...current,
-                    seed: clampIntegerInput(value),
-                  }))
-                }
-                value={generationSettings.seed}
-              />
-            </div>
+          <h3>Prompt</h3>
+          <div className="subsection-stack">
+            <section className="subsection-block">
+              <h4>Prompt</h4>
+              <div className="field-grid">
+                <Field
+                  label="Label"
+                  onChange={(value) => setPromptDraft((current) => ({ ...current, name: value }))}
+                  value={promptDraft.name}
+                />
+                <TextAreaField
+                  label="User"
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, userPromptTemplate: value }))
+                  }
+                  value={promptDraft.userPromptTemplate}
+                />
+                <TextAreaField
+                  label="System"
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, systemPrompt: value }))
+                  }
+                  value={promptDraft.systemPrompt}
+                />
+                <Field
+                  label="Message Length"
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, messageLengthInstruction: value }))
+                  }
+                  value={promptDraft.messageLengthInstruction}
+                />
+              </div>
+            </section>
+
+            <section className="subsection-block">
+              <h4>Message Parts</h4>
+              <div className="field-grid">
+                <TextAreaField
+                  label="Prefix"
+                  onChange={(value) => setPromptDraft((current) => ({ ...current, prefixText: value }))}
+                  value={promptDraft.prefixText}
+                />
+                <TextAreaField
+                  label="Suffix"
+                  onChange={(value) => setPromptDraft((current) => ({ ...current, suffixText: value }))}
+                  value={promptDraft.suffixText}
+                />
+              </div>
+            </section>
+
+            <section className="subsection-block">
+              <div className="subsection-toggle-row">
+                <div>
+                  <h4>Model Parameters</h4>
+                  <div className="field-help">Enable shared generation parameters for this run.</div>
+                </div>
+                <ToggleField
+                  checked={isSharedModelParamsEnabled}
+                  label="Enable"
+                  onChange={handleSharedModelParamsToggle}
+                />
+              </div>
+              {isSharedModelParamsEnabled ? (
+                <div className="inline-grid">
+                  <Field
+                    helpText={HELP_TEXT.temperature}
+                    label="Temperature"
+                    max="1"
+                    min="0"
+                    onChange={(value) =>
+                      setGenerationSettings((current) => ({
+                        ...current,
+                        temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                      }))
+                    }
+                    step="0.01"
+                    type="number"
+                    value={generationSettings.temperature}
+                  />
+                  <Field
+                    label="Max Tokens"
+                    onChange={(value) =>
+                      setGenerationSettings((current) => ({ ...current, maxTokens: value }))
+                    }
+                    type="number"
+                    value={generationSettings.maxTokens}
+                  />
+                  <Field
+                    helpText={HELP_TEXT.topP}
+                    label="Top P"
+                    max="1"
+                    min="0"
+                    onChange={(value) =>
+                      setGenerationSettings((current) => ({
+                        ...current,
+                        topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                      }))
+                    }
+                    step="0.01"
+                    type="number"
+                    value={generationSettings.topP}
+                  />
+                  <Field
+                    helpText={HELP_TEXT.seed}
+                    label="Seed"
+                    inputMode="numeric"
+                    onChange={(value) =>
+                      setGenerationSettings((current) => ({
+                        ...current,
+                        seed: clampIntegerInput(value),
+                      }))
+                    }
+                    value={generationSettings.seed}
+                  />
+                </div>
+              ) : null}
+            </section>
           </div>
           <div className="button-row section-actions">
             <button
@@ -476,7 +529,7 @@ export function PlaygroundSection(workspace) {
       <section className="panel-block page-section">
         <div className="variant-row section-head">
           <div>
-            <h3>Model Variations</h3>
+            <h3>Generation Playground</h3>
             <div className="field-help">
               In single mode the first variant is used. In compare mode each row is generated side by side.
             </div>
@@ -504,7 +557,7 @@ export function PlaygroundSection(workspace) {
               <div className="variant-row">
                 <div>
                   <div className="variant-title">{variant.label}</div>
-                  <div className="field-help">Model plus optional per-variant overrides.</div>
+                  <div className="field-help">Choose the label, prompt source, and model. Overrides are optional.</div>
                 </div>
                 {index > 0 ? (
                   <button
@@ -516,12 +569,27 @@ export function PlaygroundSection(workspace) {
                   </button>
                 ) : null}
               </div>
-              <div className="inline-grid">
+              <div className="variant-primary-grid">
                 <Field
                   label="Label"
                   onChange={(value) => updateVariant(variant.id, { label: value })}
                   value={variant.label}
                 />
+                <div className="field-group">
+                  <label htmlFor={`${variant.id}-prompt-source`}>Prompt Source</label>
+                  <select
+                    id={`${variant.id}-prompt-source`}
+                    onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
+                    value={variant.promptSource}
+                  >
+                    <option value="current">Current draft</option>
+                    {promptTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="field-group">
                   <label htmlFor={`${variant.id}-model`}>Model</label>
                   <select
@@ -537,60 +605,65 @@ export function PlaygroundSection(workspace) {
                   </select>
                   <div className="field-help">Pricing shown is per 1M input and 1M output tokens.</div>
                 </div>
-                <div className="field-group">
-                  <label htmlFor={`${variant.id}-prompt-source`}>Prompt source</label>
-                  <select
-                    id={`${variant.id}-prompt-source`}
-                    onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
-                    value={variant.promptSource}
-                  >
-                    <option value="current">Current draft</option>
-                    {promptTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
+              </div>
+
+              <div className="subsection-block variant-overrides-block">
+                <div className="subsection-toggle-row">
+                  <div>
+                    <h4>Override Model Parameters</h4>
+                    <div className="field-help">Show and apply per-variant generation overrides.</div>
+                  </div>
+                  <ToggleField
+                    checked={Boolean(variant.useOverrides)}
+                    label="Enable"
+                    onChange={(enabled) => handleVariantOverrideToggle(variant.id, enabled)}
+                  />
                 </div>
-                <Field
-                  label="Temperature override"
-                  helpText={HELP_TEXT.temperature}
-                  max="1"
-                  min="0"
-                  onChange={(value) =>
-                    updateVariant(variant.id, {
-                      temperature: clampDecimalInput(value, { min: 0, max: 1 }),
-                    })
-                  }
-                  step="0.01"
-                  type="number"
-                  value={variant.temperature}
-                />
-                <Field
-                  label="Top P override"
-                  helpText={HELP_TEXT.topP}
-                  max="1"
-                  min="0"
-                  onChange={(value) =>
-                    updateVariant(variant.id, { topP: clampDecimalInput(value, { min: 0, max: 1 }) })
-                  }
-                  step="0.01"
-                  type="number"
-                  value={variant.topP}
-                />
-                <Field
-                  label="Max tokens override"
-                  onChange={(value) => updateVariant(variant.id, { maxTokens: value })}
-                  type="number"
-                  value={variant.maxTokens}
-                />
-                <Field
-                  label="Seed override"
-                  helpText={HELP_TEXT.seed}
-                  inputMode="numeric"
-                  onChange={(value) => updateVariant(variant.id, { seed: clampIntegerInput(value) })}
-                  value={variant.seed}
-                />
+                {variant.useOverrides ? (
+                  <div className="inline-grid">
+                    <Field
+                      label="Temperature Override"
+                      helpText={HELP_TEXT.temperature}
+                      max="1"
+                      min="0"
+                      onChange={(value) =>
+                        updateVariant(variant.id, {
+                          temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                        })
+                      }
+                      step="0.01"
+                      type="number"
+                      value={variant.temperature}
+                    />
+                    <Field
+                      label="Max Tokens Override"
+                      onChange={(value) => updateVariant(variant.id, { maxTokens: value })}
+                      type="number"
+                      value={variant.maxTokens}
+                    />
+                    <Field
+                      label="Top P Override"
+                      helpText={HELP_TEXT.topP}
+                      max="1"
+                      min="0"
+                      onChange={(value) =>
+                        updateVariant(variant.id, {
+                          topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                        })
+                      }
+                      step="0.01"
+                      type="number"
+                      value={variant.topP}
+                    />
+                    <Field
+                      label="Seed Override"
+                      helpText={HELP_TEXT.seed}
+                      inputMode="numeric"
+                      onChange={(value) => updateVariant(variant.id, { seed: clampIntegerInput(value) })}
+                      value={variant.seed}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
@@ -962,6 +1035,15 @@ function TextAreaField({ label, onChange, value }) {
       <label className="field-label">{label}</label>
       <textarea onChange={(event) => onChange(event.target.value)} value={value} />
     </div>
+  );
+}
+
+function ToggleField({ checked, label, onChange }) {
+  return (
+    <label className="toggle-field">
+      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+      <span>{label}</span>
+    </label>
   );
 }
 
