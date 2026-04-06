@@ -378,11 +378,14 @@
   align-items: flex-start;
 }
 
-.variant-title,
 .history-card h4,
 .result-title {
   font-size: 1rem;
   font-weight: 600;
+}
+
+.variant-title {
+  padding-bottom: 12px;
 }
 
 .inline-grid {
@@ -764,6 +767,12 @@ td {
   gap: 16px;
 }
 
+.variant-list {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 360px));
+  align-items: start;
+  justify-content: start;
+}
+
 .subsection-block {
   display: grid;
   gap: 12px;
@@ -807,12 +816,41 @@ td {
 
 .variant-primary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+  align-content: start;
 }
 
 .variant-overrides-block {
   margin-top: 16px;
+  align-content: start;
+}
+
+.variant-card {
+  display: grid;
+  align-content: start;
+  align-self: start;
+  gap: 0;
+}
+
+.variant-card .variant-row {
+  align-items: flex-start;
+}
+
+.variant-card-actions {
+  margin-top: 16px;
+}
+
+.variant-card-actions .danger-button {
+  justify-content: center;
+}
+
+.subsection-toggle-row {
+  align-items: flex-start;
+}
+
+.subsection-toggle-row .toggle-field {
+  align-self: start;
 }
 
 .section-head {
@@ -836,9 +874,12 @@ td {
 
   .two-column,
   .three-column,
-  .auth-card,
-  .variant-primary-grid {
+  .auth-card {
     grid-template-columns: 1fr;
+  }
+
+  .variant-list {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 }
 
@@ -853,15 +894,20 @@ td {
   .auth-panel,
   .auth-form-panel,
   .panel-block,
-  .variant-card,
   .result-card,
   .history-card {
     padding: 16px;
     border-radius: 18px;
   }
 
+  .variant-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
   .inline-grid,
-  .auth-hero-grid {
+  .auth-hero-grid,
+  .variant-list {
     grid-template-columns: 1fr;
   }
 

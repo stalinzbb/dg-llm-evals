@@ -513,14 +513,14 @@ export function PlaygroundSection(workspace) {
               onClick={handleSavePrompt}
               type="button"
             >
-              Save recipe
+              Save Prompt
             </button>
             <button
               className="tertiary-button"
               onClick={() => setIsPromptLibraryOpen(true)}
               type="button"
             >
-              View all recipes
+              View all Prompts
             </button>
           </div>
         </section>
@@ -556,18 +556,9 @@ export function PlaygroundSection(workspace) {
             <div className="variant-card" key={variant.id}>
               <div className="variant-row">
                 <div>
-                  <div className="variant-title">{variant.label}</div>
-                  <div className="field-help">Choose the label, prompt source, and model. Overrides are optional.</div>
+                  <h4 className="variant-title">{variant.label}</h4>
+                  {/* <div className="field-help">Choose the label, prompt source, and model. Overrides are optional.</div> */}
                 </div>
-                {index > 0 ? (
-                  <button
-                    className="danger-button"
-                    onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))}
-                    type="button"
-                  >
-                    Remove
-                  </button>
-                ) : null}
               </div>
               <div className="variant-primary-grid">
                 <Field
@@ -576,7 +567,9 @@ export function PlaygroundSection(workspace) {
                   value={variant.label}
                 />
                 <div className="field-group">
-                  <label htmlFor={`${variant.id}-prompt-source`}>Prompt Source</label>
+                  <label className="field-label" htmlFor={`${variant.id}-prompt-source`}>
+                    <span>Prompt Source</span>
+                  </label>
                   <select
                     id={`${variant.id}-prompt-source`}
                     onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
@@ -591,7 +584,10 @@ export function PlaygroundSection(workspace) {
                   </select>
                 </div>
                 <div className="field-group">
-                  <label htmlFor={`${variant.id}-model`}>Model</label>
+                  <label className="field-label" htmlFor={`${variant.id}-model`}>
+                    <span>Model</span>
+                    <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
+                  </label>
                   <select
                     id={`${variant.id}-model`}
                     onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
@@ -603,7 +599,6 @@ export function PlaygroundSection(workspace) {
                       </option>
                     ))}
                   </select>
-                  <div className="field-help">Pricing shown is per 1M input and 1M output tokens.</div>
                 </div>
               </div>
 
@@ -665,6 +660,17 @@ export function PlaygroundSection(workspace) {
                   </div>
                 ) : null}
               </div>
+              {index > 0 ? (
+                <div className="variant-card-actions">
+                  <button
+                    className="danger-button"
+                    onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
