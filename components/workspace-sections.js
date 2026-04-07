@@ -125,7 +125,6 @@ export function PlaygroundSection(workspace) {
     promptTemplates,
     setCaseDraft,
     setGenerationSettings,
-    setPlaygroundMode,
     setPromptDraft,
     setVariants,
     testCases,
@@ -206,25 +205,7 @@ export function PlaygroundSection(workspace) {
   return (
     <>
       <WorkspacePageHeader
-        actions={
-          <div className="button-row">
-            <button
-              className={`mode-button ${playgroundMode === "single" ? "is-active" : ""}`}
-              onClick={() => setPlaygroundMode("single")}
-              type="button"
-            >
-              Single output
-            </button>
-            <button
-              className={`mode-button ${playgroundMode === "compare" ? "is-active" : ""}`}
-              onClick={() => setPlaygroundMode("compare")}
-              type="button"
-            >
-              Comparison
-            </button>
-          </div>
-        }
-        description="Run a single prompt or compare multiple model and prompt variants on the same fundraiser input."
+        description="Run fundraiser generations from the current variant set. Adding more variants automatically enables side-by-side comparison."
         title="Playground"
       />
 
@@ -581,7 +562,9 @@ export function PlaygroundSection(workspace) {
           <div>
             <h3>Model Selection</h3>
             <div className="field-help">
-              In single mode the first variant is used. In compare mode each row is generated side by side.
+              {playgroundMode === "compare"
+                ? "Comparison is active. Each variant is generated side by side for the same fundraiser input."
+                : "Single mode is active. Add another variant to enable side-by-side comparison."}
             </div>
           </div>
           <button
