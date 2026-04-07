@@ -709,12 +709,13 @@ export function PlaygroundSection(workspace) {
 
         <div className="button-row section-actions">
           <button
-            className="primary-button"
+            className="primary-button run-action-button"
             disabled={playgroundGenerating}
             onClick={handleGenerate}
             type="button"
           >
-            {playgroundGenerating ? "Generating…" : "Generate"}
+            <BoltIcon />
+            {playgroundGenerating ? "Running…" : "Run"}
           </button>
           <button
             className="tertiary-button"
@@ -744,7 +745,7 @@ export function PlaygroundSection(workspace) {
               ))}
             </div>
           ) : (
-            <div className="empty-state">Run Generate to open the latest result here.</div>
+            <div className="empty-state">Run to open the latest result here.</div>
           )}
         </DrawerShell>
       ) : null}
