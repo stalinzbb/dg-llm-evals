@@ -808,20 +808,23 @@ export function PlaygroundSection(workspace) {
 
 export function BatchSection(workspace) {
   const {
+    availableModelOptions,
     batchSampleCount,
     batchVerificationFilter,
     batchSelection,
+    enabledModelIds,
     handleBatchRun,
     handleSaveImportedCases,
     importedCases,
-    promptDraft,
     promptTemplates,
     setBatchSampleCount,
     setBatchVerificationFilter,
     setBatchSelection,
     setImportedCases,
+    setVariants,
     sourcePoolStats,
     testCases,
+    updateVariant,
     variants,
   } = workspace;
 
@@ -977,39 +980,99 @@ export function BatchSection(workspace) {
       </section>
 
       <section className="panel-block page-section">
-        <h3>Current variant matrix</h3>
-        <div className="field-help section-note">
-          Batch runs reuse the same variant definitions from the Playground page.
+        <div className="variant-row section-head">
+          <div>
+            <h3>Batch run configuration</h3>
+            <div className="field-help">
+              Choose the saved prompt and model for each batch variant. Prompts must be saved in Playground first.
+            </div>
+          </div>
+          <button
+            className="secondary-button"
+            disabled={!promptTemplates.length}
+            onClick={() =>
+              setVariants((current) => [
+                ...current,
+                {
+                  ...createInitialVariant(enabledModelIds),
+                  label: `Variant ${current.length + 1}`,
+                  promptSource: promptTemplates[0]?.id || "current",
+                },
+              ])
+            }
+            type="button"
+          >
+            Add variant
+          </button>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Variant</th>
-                <th>Model</th>
-                <th>Prompt source</th>
-                <th>Overrides</th>
-              </tr>
-            </thead>
-            <tbody>
-              {variants.map((variant) => (
-                <tr key={variant.id}>
-                  <td>{variant.label}</td>
-                  <td>{variant.model}</td>
-                  <td>
-                    {variant.promptSource === "current"
-                      ? promptDraft.name || "Current draft"
-                      : promptTemplates.find((item) => item.id === variant.promptSource)?.name ||
-                        "Saved template"}
-                  </td>
-                  <td>
-                    T {variant.temperature || "shared"} · P {variant.topP || "shared"} · Max{" "}
-                    {variant.maxTokens || "shared"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        {!promptTemplates.length ? (
+          <div className="callout error-callout section-note">
+            Save at least one prompt in Playground before running a batch.
+          </div>
+        ) : null}
+
+        <div className="variant-list">
+          {variants.map((variant, index) => (
+            <div className="variant-card" key={variant.id}>
+              <div className="variant-row">
+                <div>
+                  <h4 className="variant-title">{variant.label}</h4>
+                </div>
+              </div>
+              <div className="variant-primary-grid">
+                <Field
+                  label="Label"
+                  onChange={(value) => updateVariant(variant.id, { label: value })}
+                  value={variant.label}
+                />
+                <div className="field-group">
+                  <label className="field-label" htmlFor={`${variant.id}-batch-prompt-source`}>
+                    <span>Saved Prompt</span>
+                  </label>
+                  <select
+                    id={`${variant.id}-batch-prompt-source`}
+                    onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
+                    value={variant.promptSource}
+                  >
+                    {promptTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label className="field-label" htmlFor={`${variant.id}-batch-model`}>
+                    <span>Model</span>
+                    <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
+                  </label>
+                  <select
+                    id={`${variant.id}-batch-model`}
+                    onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
+                    value={variant.model}
+                  >
+                    {availableModelOptions.map((model) => (
+                      <option disabled={model.unavailable} key={model.value} value={model.value}>
+                        {formatModelOption(model)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {index > 0 ? (
+                <div className="variant-card-actions">
+                  <button
+                    className="danger-button"
+                    onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
       </section>
     </>
