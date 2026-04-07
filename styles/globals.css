@@ -245,6 +245,10 @@
   gap: 8px;
 }
 
+.input-shell {
+  position: relative;
+}
+
 .field-group label {
   color: var(--ink-soft);
   font-size: 0.84rem;
@@ -270,6 +274,25 @@
   border-radius: 14px;
   background: var(--surface-muted);
   outline: 0;
+}
+
+.input-shell.has-adornment input {
+  padding-right: 46px;
+}
+
+.input-adornment {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.input-adornment-verified {
+  color: var(--brand);
 }
 
 .field-group select {

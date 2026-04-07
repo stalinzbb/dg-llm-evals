@@ -129,3 +129,12 @@ export function ShuffleIcon() {
     </IconBase>
   );
 }
+
+export function BadgeCheckIcon() {
+  return (
+    <IconBase>
+      <path d="M9 12l2 2 4-4" />
+      <path d="M3.85 8.62a7.4 7.4 0 0 1 5.52-4.77a4.8 4.8 0 0 1 5.26 0a7.4 7.4 0 0 1 5.52 5.52a4.8 4.8 0 0 1 0 5.26a7.4 7.4 0 0 1-5.52 5.52a4.8 4.8 0 0 1-5.26 0a7.4 7.4 0 0 1-5.52-5.52a4.8 4.8 0 0 1 0-5.26Z" />
+    </IconBase>
+  );
+}

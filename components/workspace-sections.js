@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import DrawerShell from "@/components/drawer-shell";
-import { ShuffleIcon } from "@/components/icons";
+import { BadgeCheckIcon, ShuffleIcon } from "@/components/icons";
 import LibraryDrawer from "@/components/library-drawer";
 import ResultCard from "@/components/result-card";
 import WorkspacePageHeader from "@/components/workspace-page-header";
@@ -249,11 +249,6 @@ export function PlaygroundSection(workspace) {
               {playgroundRandomizing ? "Randomizing…" : "Randomize"}
             </button>
           </div>
-          {caseDraft.sourceType === "source_pool" ? (
-            <div className="callout section-note">
-              Source pool row loaded{caseDraft.isVerified ? " · Verified organization" : ""}
-            </div>
-          ) : null}
           <div className="field-grid">
             <div className="subsection-stack">
               <section className="subsection-block">
@@ -263,6 +258,13 @@ export function PlaygroundSection(workspace) {
                     label="Organization name"
                     onChange={(value) =>
                       setCaseDraft((current) => ({ ...current, organizationName: value }))
+                    }
+                    trailingAdornment={
+                      caseDraft.sourceType === "source_pool" && caseDraft.isVerified ? (
+                        <span className="input-adornment input-adornment-verified">
+                          <BadgeCheckIcon />
+                        </span>
+                      ) : null
                     }
                     value={caseDraft.organizationName}
                   />
@@ -1234,14 +1236,17 @@ export function SettingsSection(workspace) {
   );
 }
 
-function Field({ helpText, label, onChange, type = "text", value, ...props }) {
+function Field({ helpText, label, onChange, trailingAdornment = null, type = "text", value, ...props }) {
   return (
     <div className="field-group">
       <label className="field-label">
         <span>{label}</span>
         {helpText ? <HelpTooltip text={helpText} /> : null}
       </label>
-      <input onChange={(event) => onChange(event.target.value)} type={type} value={value} {...props} />
+      <div className={`input-shell ${trailingAdornment ? "has-adornment" : ""}`}>
+        <input onChange={(event) => onChange(event.target.value)} type={type} value={value} {...props} />
+        {trailingAdornment}
+      </div>
     </div>
   );
 }
