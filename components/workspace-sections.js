@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import DrawerShell from "@/components/drawer-shell";
-import { BadgeCheckIcon, ShuffleIcon } from "@/components/icons";
+import { BadgeCheckIcon, BatchRunBoltIcon, BoltIcon, ShuffleIcon } from "@/components/icons";
 import LibraryDrawer from "@/components/library-drawer";
 import ResultCard from "@/components/result-card";
 import WorkspacePageHeader from "@/components/workspace-page-header";
@@ -835,19 +835,13 @@ export function BatchSection(workspace) {
         actions={
           <div className="button-row">
             <button
-              className="primary-button"
+              className="primary-button run-action-button"
               disabled={batchGenerating || !promptTemplates.length}
               onClick={() => handleBatchRun()}
               type="button"
             >
-              {batchGenerating ? "Generating…" : "Run batch"}
-            </button>
-            <button
-              className="tertiary-button"
-              onClick={() => downloadCsv("saved-runs.csv", toCsv(serializeRunRows(workspace.runs)))}
-              type="button"
-            >
-              Export run rows
+              <BatchRunBoltIcon />
+              {batchGenerating ? "Running…" : "Run Batch"}
             </button>
           </div>
         }
@@ -855,11 +849,12 @@ export function BatchSection(workspace) {
         title="Batches"
       />
 
+      <div className="batch-section-stack">
       <section className="panel-block">
         <div className="utility-row section-head">
           <h3>Playground saved cases</h3>
           <button
-            className="secondary-button"
+            className="primary-button run-action-button"
             disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
             onClick={() =>
               handleBatchRun({
@@ -870,7 +865,8 @@ export function BatchSection(workspace) {
             }
             type="button"
           >
-            Generate
+            <BoltIcon />
+            {batchGenerating ? "Running…" : "Run"}
           </button>
         </div>
           {testCases.length ? (
@@ -921,8 +917,8 @@ export function BatchSection(workspace) {
         <section className="panel-block">
           <div className="utility-row section-head">
             <h3>CSV import</h3>
-            <button
-              className="secondary-button"
+          <button
+              className="primary-button run-action-button"
               disabled={batchGenerating || !promptTemplates.length || !importedCases.length}
               onClick={() =>
                 handleBatchRun({
@@ -933,7 +929,8 @@ export function BatchSection(workspace) {
               }
               type="button"
             >
-              Generate
+              <BoltIcon />
+              {batchGenerating ? "Running…" : "Run"}
             </button>
           </div>
           <div className="field-help" style={{ marginBottom: 12 }}>
@@ -941,7 +938,7 @@ export function BatchSection(workspace) {
             TEAM_ACTIVITY, TEAM_AFFILIATION.
           </div>
           <div className="field-group">
-            <label htmlFor="csv-import">Upload CSV</label>
+            <h4>Upload CSV</h4>
             <input
               accept=".csv,text/csv"
               id="csv-import"
@@ -979,7 +976,7 @@ export function BatchSection(workspace) {
         </section>
 
         <section className="panel-block">
-          <div className="utility-row section-head">
+          <div className="utility-row section-head batch-source-head">
             <div>
               <h3>Source Pool</h3>
               <div className="field-help">
@@ -988,7 +985,7 @@ export function BatchSection(workspace) {
               </div>
             </div>
             <button
-              className="secondary-button"
+              className="primary-button run-action-button"
               disabled={batchGenerating || !promptTemplates.length || (Number(batchSampleCount) || 0) <= 0}
               onClick={() =>
                 handleBatchRun({
@@ -999,7 +996,8 @@ export function BatchSection(workspace) {
               }
               type="button"
             >
-              Generate
+              <BoltIcon />
+              {batchGenerating ? "Running…" : "Run"}
             </button>
           </div>
           <section className="subsection-block">
@@ -1129,6 +1127,7 @@ export function BatchSection(workspace) {
           ))}
         </div>
       </section>
+      </div>
     </>
   );
 }

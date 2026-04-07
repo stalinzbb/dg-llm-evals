@@ -46,9 +46,9 @@
   justify-content: flex-start;
   gap: 12px;
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0 18px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 100px;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -209,6 +209,11 @@
 
 .two-column,
 .three-column {
+  display: grid;
+  gap: 18px;
+}
+
+.batch-section-stack {
   display: grid;
   gap: 18px;
 }
@@ -891,6 +896,20 @@ td {
 
 .section-head {
   margin-bottom: 16px;
+}
+
+.batch-source-head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.batch-source-head > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.run-action-button {
+  gap: 6px;
 }
 
 .playground-results {
