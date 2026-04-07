@@ -230,7 +230,7 @@ export function PlaygroundSection(workspace) {
 
       <div className="two-column">
         <section className="panel-block">
-          <div className="utility-row section-head">
+          <div className="utility-row section-head playground-section-head">
             <div>
               <h3>Data Variables</h3>
               <div className="field-help">
@@ -440,7 +440,7 @@ export function PlaygroundSection(workspace) {
         </section>
 
         <section className="panel-block">
-          <h3>Prompt</h3>
+          <h3 className="playground-section-title">Prompt</h3>
           <div className="subsection-stack">
             <section className="subsection-block">
               <div className="utility-row section-head">
@@ -581,7 +581,7 @@ export function PlaygroundSection(workspace) {
       </div>
 
       <section className="panel-block page-section">
-        <div className="variant-row section-head">
+        <div className="variant-row section-head playground-section-head">
           <div>
             <h3>Model Selection</h3>
             <div className="field-help">

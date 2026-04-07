@@ -56,7 +56,6 @@
   background: var(--sidebar-surface);
   border-right: 1px solid var(--sidebar-line);
   overflow: hidden;
-  transition: width 180ms ease;
   width: var(--sidebar-collapsed);
   z-index: 20;
 }

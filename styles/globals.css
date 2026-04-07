@@ -281,6 +281,30 @@
   outline: 0;
 }
 
+.field-group input[type="file"] {
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.field-group input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  min-height: 36px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  background: var(--surface-strong);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.field-group input[type="file"]::file-selector-button:hover {
+  border-color: var(--line-strong);
+}
+
 .input-shell.has-adornment input {
   padding-right: 46px;
 }
@@ -895,6 +919,11 @@ td {
 }
 
 .section-head {
+  margin-bottom: 16px;
+}
+
+.playground-section-head,
+.playground-section-title {
   margin-bottom: 16px;
 }
 
