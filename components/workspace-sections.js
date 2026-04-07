@@ -810,7 +810,6 @@ export function BatchSection(workspace) {
     batchVerificationFilter,
     batchSelection,
     handleBatchRun,
-    handleImportSourcePool,
     handleSaveImportedCases,
     importedCases,
     promptDraft,
@@ -819,7 +818,6 @@ export function BatchSection(workspace) {
     setBatchVerificationFilter,
     setBatchSelection,
     setImportedCases,
-    sourcePoolImporting,
     sourcePoolStats,
     testCases,
     variants,
@@ -848,7 +846,7 @@ export function BatchSection(workspace) {
 
       <div className="two-column">
         <section className="panel-block">
-          <h3>Saved case library</h3>
+          <h3>Playground saved cases</h3>
           {testCases.length ? (
             <div className="table-wrap">
               <table>
@@ -945,32 +943,6 @@ export function BatchSection(workspace) {
           </div>
         </div>
         <div className="two-column">
-          <section className="subsection-block">
-            <h4>Admin Upload</h4>
-            <div className="field-help" style={{ marginBottom: 12 }}>
-              Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID,
-              ORGANIZATION_TYPE, TEAM_ACTIVITY, TEAM_AFFILIATION.
-            </div>
-            <div className="field-group">
-              <label htmlFor="source-pool-import">Upload Source CSV</label>
-              <input
-                accept=".csv,text/csv"
-                id="source-pool-import"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    handleImportSourcePool(file);
-                  }
-                  event.target.value = "";
-                }}
-                type="file"
-              />
-            </div>
-            <div className="field-help">
-              {sourcePoolImporting ? "Importing and replacing the current source pool…" : "Uploading replaces the current source pool."}
-            </div>
-          </section>
-
           <section className="subsection-block">
             <h4>Batch Sampling</h4>
             <div className="inline-grid">
@@ -1137,7 +1109,13 @@ export function HistorySection(workspace) {
 }
 
 export function SettingsSection(workspace) {
-  const { enabledModelIds, handleSaveSettings } = workspace;
+  const {
+    enabledModelIds,
+    handleImportSourcePool,
+    handleSaveSettings,
+    sourcePoolImporting,
+    sourcePoolStats,
+  } = workspace;
   const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
     sanitizeModelConfigurationIds(enabledModelIds),
   );
@@ -1230,6 +1208,42 @@ export function SettingsSection(workspace) {
               })}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="panel-block page-section">
+        <div className="utility-row section-head">
+          <div>
+            <h3>Source Pool Management</h3>
+            <div className="field-help">
+              Current pool: {sourcePoolStats.total} rows, {sourcePoolStats.verified} verified,{" "}
+              {sourcePoolStats.unverified} unverified.
+            </div>
+          </div>
+        </div>
+        <div className="field-help" style={{ marginBottom: 12 }}>
+          Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
+          TEAM_ACTIVITY, TEAM_AFFILIATION.
+        </div>
+        <div className="field-group">
+          <label htmlFor="source-pool-import">Upload Source CSV</label>
+          <input
+            accept=".csv,text/csv"
+            id="source-pool-import"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                handleImportSourcePool(file);
+              }
+              event.target.value = "";
+            }}
+            type="file"
+          />
+        </div>
+        <div className="field-help">
+          {sourcePoolImporting
+            ? "Importing and replacing the current source pool…"
+            : "Uploading replaces the current source pool."}
         </div>
       </section>
     </>
