@@ -97,6 +97,7 @@ export function PlaygroundSection(workspace) {
     caseDraft,
     generationSettings,
     handleGenerate,
+    handleRandomizeCaseFromSourcePool,
     handleSaveCase,
     handleDeleteCase,
     handleSavePrompt,
@@ -104,6 +105,7 @@ export function PlaygroundSection(workspace) {
     normalizeTestCase,
     playgroundMode,
     playgroundGenerating,
+    playgroundRandomizing,
     playgroundRun,
     promptDraft,
     promptTemplates,
@@ -117,6 +119,7 @@ export function PlaygroundSection(workspace) {
     variants,
     canSaveCase,
     canSavePrompt,
+    sourcePoolStats,
   } = workspace;
   const [causeTagError, setCauseTagError] = useState("");
   const [isResultDrawerOpen, setIsResultDrawerOpen] = useState(false);
@@ -213,7 +216,29 @@ export function PlaygroundSection(workspace) {
 
       <div className="two-column">
         <section className="panel-block">
-          <h3>Data Variables</h3>
+          <div className="utility-row section-head">
+            <div>
+              <h3>Data Variables</h3>
+              <div className="field-help">
+                {sourcePoolStats.total
+                  ? `${sourcePoolStats.total} source rows loaded · ${sourcePoolStats.verified} verified`
+                  : "Upload a source CSV in Batches to enable randomization."}
+              </div>
+            </div>
+            <button
+              className="secondary-button"
+              disabled={!sourcePoolStats.total || playgroundRandomizing}
+              onClick={handleRandomizeCaseFromSourcePool}
+              type="button"
+            >
+              {playgroundRandomizing ? "Randomizing…" : "Randomize"}
+            </button>
+          </div>
+          {caseDraft.sourceType === "source_pool" ? (
+            <div className="callout section-note">
+              Source pool row loaded{caseDraft.isVerified ? " · Verified organization" : ""}
+            </div>
+          ) : null}
           <div className="field-grid">
             <div className="subsection-stack">
               <section className="subsection-block">
@@ -754,14 +779,21 @@ export function PlaygroundSection(workspace) {
 
 export function BatchSection(workspace) {
   const {
+    batchSampleCount,
+    batchVerificationFilter,
     batchSelection,
     handleBatchRun,
+    handleImportSourcePool,
     handleSaveImportedCases,
     importedCases,
     promptDraft,
     promptTemplates,
+    setBatchSampleCount,
+    setBatchVerificationFilter,
     setBatchSelection,
     setImportedCases,
+    sourcePoolImporting,
+    sourcePoolStats,
     testCases,
     variants,
   } = workspace;
@@ -874,6 +906,74 @@ export function BatchSection(workspace) {
           )}
         </section>
       </div>
+
+      <section className="panel-block page-section">
+        <div className="utility-row section-head">
+          <div>
+            <h3>Source Pool</h3>
+            <div className="field-help">
+              Dedicated randomization dataset. Current pool: {sourcePoolStats.total} rows,{" "}
+              {sourcePoolStats.verified} verified, {sourcePoolStats.unverified} unverified.
+            </div>
+          </div>
+        </div>
+        <div className="two-column">
+          <section className="subsection-block">
+            <h4>Admin Upload</h4>
+            <div className="field-help" style={{ marginBottom: 12 }}>
+              Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID,
+              ORGANIZATION_TYPE, TEAM_ACTIVITY, TEAM_AFFILIATION.
+            </div>
+            <div className="field-group">
+              <label htmlFor="source-pool-import">Upload Source CSV</label>
+              <input
+                accept=".csv,text/csv"
+                id="source-pool-import"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    handleImportSourcePool(file);
+                  }
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+            </div>
+            <div className="field-help">
+              {sourcePoolImporting ? "Importing and replacing the current source pool…" : "Uploading replaces the current source pool."}
+            </div>
+          </section>
+
+          <section className="subsection-block">
+            <h4>Batch Sampling</h4>
+            <div className="inline-grid">
+              <Field
+                label="Random sample count"
+                onChange={setBatchSampleCount}
+                type="number"
+                value={batchSampleCount}
+              />
+              <div className="field-group">
+                <label className="field-label" htmlFor="batch-verification-filter">
+                  <span>Verification Filter</span>
+                </label>
+                <select
+                  id="batch-verification-filter"
+                  onChange={(event) => setBatchVerificationFilter(event.target.value)}
+                  value={batchVerificationFilter}
+                >
+                  <option value="any">Any</option>
+                  <option value="verified">Verified only</option>
+                  <option value="unverified">Unverified only</option>
+                </select>
+              </div>
+            </div>
+            <div className="field-help">
+              Source-pool batch rows get 1-3 random cause tags automatically and are used only for that run.
+            </div>
+          </section>
+        </div>
+      </section>
 
       <section className="panel-block page-section">
         <h3>Current variant matrix</h3>
@@ -992,6 +1092,7 @@ export function HistorySection(workspace) {
               <div className="callout">
                 <strong>{selectedRun.label}</strong> · {selectedRun.mode} ·{" "}
                 {selectedRun.results?.length || 0} results · ID {normalizeShortRunId(selectedRun.id)}
+                {selectedRun.results?.some((result) => result.isVerified) ? " · Includes verified organizations" : ""}
               </div>
               <div className="result-grid section-actions">
                 {(selectedRun.results || []).map((result) => (

@@ -16,6 +16,7 @@ export default function PlaygroundPage() {
           value: workspace.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
         },
         { label: "Saved cases", value: workspace.testCases.length },
+        { label: "Source pool", value: workspace.sourcePoolStats.total },
         { label: "Templates", value: workspace.promptTemplates.length },
         { label: "Storage", value: workspace.storageMode },
       ]}

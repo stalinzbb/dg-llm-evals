@@ -60,10 +60,13 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
             {result.model} · {result.promptTemplateName || "Current draft recipe"} · result ID {result.id}
           </div>
         </div>
-        <span className="badge">
-          <strong>{result.provider}</strong>
-          provider
-        </span>
+        <div className="tag-row">
+          {result.isVerified ? <span className="badge">Verified org</span> : null}
+          <span className="badge">
+            <strong>{result.provider}</strong>
+            provider
+          </span>
+        </div>
       </div>
 
       <div className="metric-strip">
@@ -102,7 +105,10 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
 
       <div className="status-line">
         <span>{characterCount} characters in this view</span>
-        <span>{result.caseName}</span>
+        <span>
+          {result.caseName}
+          {result.sourceType ? ` · ${result.sourceType.replace(/_/g, " ")}` : ""}
+        </span>
       </div>
 
       <div className="result-actions">
