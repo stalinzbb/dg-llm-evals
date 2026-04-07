@@ -117,3 +117,15 @@ export function TrashIcon() {
     </IconBase>
   );
 }
+
+export function ShuffleIcon() {
+  return (
+    <IconBase>
+      <path d="M18 14l4 4-4 4" />
+      <path d="M22 18h-6.041a6.1 6.1 0 0 1-5.059-2.7l-.3-.45" />
+      <path d="M18 2l4 4-4 4" />
+      <path d="M22 6h-5.973a6.1 6.1 0 0 0-5.027 2.64L5.7 16.3A6.1 6.1 0 0 1 .973 18H2" />
+      <path d="M2 6h1.972A6.1 6.1 0 0 1 9 8.2" />
+    </IconBase>
+  );
+}

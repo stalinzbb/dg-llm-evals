@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import DrawerShell from "@/components/drawer-shell";
+import { ShuffleIcon } from "@/components/icons";
 import LibraryDrawer from "@/components/library-drawer";
 import ResultCard from "@/components/result-card";
 import WorkspacePageHeader from "@/components/workspace-page-header";
@@ -109,6 +110,7 @@ export function PlaygroundSection(workspace) {
     caseDraft,
     generationSettings,
     handleGenerate,
+    handleRandomizeCauseTags,
     handleRandomizeCaseFromSourcePool,
     handleSaveCase,
     handleDeleteCase,
@@ -243,6 +245,7 @@ export function PlaygroundSection(workspace) {
               onClick={handleRandomizeCaseFromSourcePool}
               type="button"
             >
+              <ShuffleIcon />
               {playgroundRandomizing ? "Randomizing…" : "Randomize"}
             </button>
           </div>
@@ -381,7 +384,17 @@ export function PlaygroundSection(workspace) {
               </section>
 
               <section className="subsection-block">
-                <h4>Cause Tags</h4>
+                <div className="utility-row">
+                  <h4>Cause Tags</h4>
+                  <button
+                    aria-label="Randomize cause tags"
+                    className="icon-button"
+                    onClick={handleRandomizeCauseTags}
+                    type="button"
+                  >
+                    <ShuffleIcon />
+                  </button>
+                </div>
                 <div className="field-group">
                   <div className="chip-grid">
                     {causeTagOptions.map((tag) => {
