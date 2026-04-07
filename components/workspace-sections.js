@@ -420,7 +420,7 @@ export function PlaygroundSection(workspace) {
               </section>
             </div>
           </div>
-          <div className="button-row section-actions">
+          <div className="button-row section-actions playground-footer-actions">
             <button
               className="secondary-button"
               disabled={!canSaveCase}
@@ -498,11 +498,7 @@ export function PlaygroundSection(workspace) {
                   <h4>Model Parameters</h4>
                   <div className="field-help">Enable shared generation parameters for this run.</div>
                 </div>
-                <ToggleField
-                  checked={isSharedModelParamsEnabled}
-                  label="Enable"
-                  onChange={handleSharedModelParamsToggle}
-                />
+                <ToggleField checked={isSharedModelParamsEnabled} onChange={handleSharedModelParamsToggle} />
               </div>
               {isSharedModelParamsEnabled ? (
                 <div className="inline-grid">
@@ -560,7 +556,7 @@ export function PlaygroundSection(workspace) {
               ) : null}
             </section>
           </div>
-          <div className="button-row section-actions">
+          <div className="button-row section-actions playground-footer-actions">
             <button
               className="secondary-button"
               disabled={!canSavePrompt}
@@ -664,7 +660,6 @@ export function PlaygroundSection(workspace) {
                   </div>
                   <ToggleField
                     checked={Boolean(variant.useOverrides)}
-                    label="Enable"
                     onChange={(enabled) => handleVariantOverrideToggle(variant.id, enabled)}
                   />
                 </div>
@@ -1392,11 +1387,14 @@ function TextAreaField({ label, onChange, value }) {
   );
 }
 
-function ToggleField({ checked, label, onChange }) {
+function ToggleField({ checked, label = "", onChange }) {
   return (
     <label className="toggle-field">
       <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-      <span>{label}</span>
+      <span aria-hidden="true" className="toggle-switch">
+        <span className="toggle-thumb" />
+      </span>
+      {label ? <span>{label}</span> : null}
     </label>
   );
 }

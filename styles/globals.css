@@ -862,21 +862,69 @@ td {
 .toggle-field {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--ink-soft);
-  font-size: 0.84rem;
-  font-weight: 600;
+  gap: 0;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
 }
 
 .toggle-field input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--brand);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.toggle-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  transition:
+    transform 140ms ease,
+    background 140ms ease;
+}
+
+.toggle-field input:checked + .toggle-switch {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-muted));
+}
+
+.toggle-field input:checked + .toggle-switch .toggle-thumb {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+.toggle-field input:focus-visible + .toggle-switch {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.toggle-field:hover .toggle-switch {
+  border-color: var(--line-strong);
 }
 
 .variant-primary-grid {
@@ -925,6 +973,11 @@ td {
 .playground-section-head,
 .playground-section-title {
   margin-bottom: 16px;
+}
+
+.playground-footer-actions {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .batch-source-head {
