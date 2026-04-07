@@ -443,7 +443,9 @@ export function PlaygroundSection(workspace) {
           <h3>Prompt</h3>
           <div className="subsection-stack">
             <section className="subsection-block">
-              <h4>Prompt</h4>
+              <div className="utility-row section-head">
+                <h4>Prompt</h4> 
+                </div>
               <div className="field-grid">
                 <Field
                   label="Label"
@@ -581,7 +583,7 @@ export function PlaygroundSection(workspace) {
       <section className="panel-block page-section">
         <div className="variant-row section-head">
           <div>
-            <h3>Generation Playground</h3>
+            <h3>Model Selection</h3>
             <div className="field-help">
               In single mode the first variant is used. In compare mode each row is generated side by side.
             </div>
@@ -890,8 +892,8 @@ export function BatchSection(workspace) {
         <section className="panel-block">
           <h3>CSV import</h3>
           <div className="field-help" style={{ marginBottom: 12 }}>
-            Expected headers: name, organizationName, teamName, organizationType, teamActivity,
-            teamAffiliation, causeTags, messageLength.
+            Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
+            TEAM_ACTIVITY, TEAM_AFFILIATION.
           </div>
           <div className="field-group">
             <label htmlFor="csv-import">Upload CSV</label>
