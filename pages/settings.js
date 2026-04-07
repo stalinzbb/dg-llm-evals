@@ -24,7 +24,7 @@ export default function SettingsPage() {
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />
-      {!workspace.loading ? <SettingsSection /> : null}
+      {!workspace.loading ? <SettingsSection {...workspace} /> : null}
     </WorkspaceLayout>
   );
 }

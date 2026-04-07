@@ -11,7 +11,10 @@ import {
   formatShortId,
   serializeRunRows,
 } from "@/lib/workspace";
-import { DEFAULT_GENERATION_SETTINGS, MODEL_OPTIONS } from "@/lib/constants";
+import {
+  DEFAULT_GENERATION_SETTINGS,
+  MODEL_OPTIONS,
+} from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
 import {
   getOrganizationTypeOptions,
@@ -75,6 +78,14 @@ function clampIntegerInput(value) {
   return value.slice(0, -1);
 }
 
+function sanitizeModelConfigurationIds(value) {
+  const runnableModelIds = MODEL_OPTIONS.filter((model) => !model.unavailable).map((model) => model.value);
+  const ids = Array.isArray(value) ? value : [];
+  return ids.filter(
+    (id, index) => typeof id === "string" && runnableModelIds.includes(id) && ids.indexOf(id) === index,
+  );
+}
+
 function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
   if (teamAffiliationConfig.mode !== "select") {
     return "";
@@ -93,6 +104,7 @@ function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
 
 export function PlaygroundSection(workspace) {
   const {
+    availableModelOptions,
     causeTagOptions,
     caseDraft,
     generationSettings,
@@ -565,7 +577,7 @@ export function PlaygroundSection(workspace) {
               setVariants((current) => [
                 ...current,
                 {
-                  ...createInitialVariant(),
+                  ...createInitialVariant(workspace.enabledModelIds),
                   label: `Variant ${current.length + 1}`,
                 },
               ])
@@ -618,7 +630,7 @@ export function PlaygroundSection(workspace) {
                     onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
                     value={variant.model}
                   >
-                    {MODEL_OPTIONS.map((model) => (
+                    {availableModelOptions.map((model) => (
                       <option disabled={model.unavailable} key={model.value} value={model.value}>
                         {formatModelOption(model)}
                       </option>
@@ -1109,16 +1121,101 @@ export function HistorySection(workspace) {
   );
 }
 
-export function SettingsSection() {
+export function SettingsSection(workspace) {
+  const { enabledModelIds, handleSaveSettings } = workspace;
+  const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
+    sanitizeModelConfigurationIds(enabledModelIds),
+  );
+
+  useEffect(() => {
+    setDraftEnabledModelIds(sanitizeModelConfigurationIds(enabledModelIds));
+  }, [enabledModelIds]);
+
+  const selectedEnabledIds = sanitizeModelConfigurationIds(draftEnabledModelIds);
+  const hasChanges =
+    JSON.stringify(selectedEnabledIds) !== JSON.stringify(sanitizeModelConfigurationIds(enabledModelIds));
+  const enabledRunnableCount = selectedEnabledIds.length;
+
+  function handleModelToggle(modelValue, checked) {
+    setDraftEnabledModelIds((current) => {
+      const currentIds = sanitizeModelConfigurationIds(current);
+      if (checked) {
+        return [...currentIds, modelValue];
+      }
+      return currentIds.filter((value) => value !== modelValue);
+    });
+  }
+
   return (
     <>
       <WorkspacePageHeader
-        description="Reserved for workspace preferences and admin controls."
+        description="Configure which models are available to future Playground and Batch runs."
         title="Settings"
       />
-      <section className="panel-block settings-empty">
-        <h3>Nothing here yet</h3>
-        <p>This page is intentionally empty for now.</p>
+      <section className="panel-block">
+        <div className="utility-row section-head">
+          <div>
+            <h3>Model Configuration</h3>
+            <div className="field-help">
+              Enabled models appear in the Playground picker and are reused by Batch runs through the shared variant matrix.
+            </div>
+          </div>
+          <button
+            className="primary-button"
+            disabled={!hasChanges || enabledRunnableCount === 0}
+            onClick={() => handleSaveSettings({ enabledModelIds: selectedEnabledIds })}
+            type="button"
+          >
+            Save settings
+          </button>
+        </div>
+
+        {enabledRunnableCount === 0 ? (
+          <div className="callout error-callout section-note">
+            At least one runnable model must stay enabled.
+          </div>
+        ) : null}
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Enabled</th>
+                <th>Model</th>
+                <th>Provider</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MODEL_OPTIONS.map((model) => {
+                const isChecked = selectedEnabledIds.includes(model.value);
+                const isLocked = Boolean(model.unavailable);
+                return (
+                  <tr key={model.value}>
+                    <td>
+                      <input
+                        checked={isChecked}
+                        disabled={isLocked}
+                        onChange={(event) => handleModelToggle(model.value, event.target.checked)}
+                        type="checkbox"
+                      />
+                    </td>
+                    <td>
+                      <strong>{model.label}</strong>
+                      <div className="field-help">{model.value}</div>
+                    </td>
+                    <td>{model.provider}</td>
+                    <td>
+                      {model.unavailable
+                        ? model.note || "Unavailable"
+                        : `$${model.input}/$${model.output} per 1M in/out`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
     </>
   );

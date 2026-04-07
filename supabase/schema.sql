@@ -15,6 +15,12 @@ create table if not exists prompt_templates (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists workspace_settings (
+  id text primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists runs (
   id text primary key,
   mode text not null,
