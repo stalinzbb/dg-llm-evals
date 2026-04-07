@@ -833,9 +833,10 @@ td {
 }
 
 .variant-list {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 360px));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 420px));
   align-items: start;
   justify-content: start;
+  gap: 18px;
 }
 
 .subsection-block {
@@ -944,10 +945,17 @@ td {
   align-content: start;
   align-self: start;
   gap: 0;
+  min-height: 100%;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
 .variant-card .variant-row {
   align-items: flex-start;
+  margin-bottom: 16px;
 }
 
 .variant-card-actions {
@@ -958,12 +966,23 @@ td {
   justify-content: center;
 }
 
+.subsection-toggle-stack {
+  display: grid;
+  gap: 8px;
+}
+
 .subsection-toggle-row {
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.subsection-toggle-row h4 {
+  margin: 0;
 }
 
 .subsection-toggle-row .toggle-field {
-  align-self: start;
+  align-self: center;
 }
 
 .section-head {

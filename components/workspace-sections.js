@@ -636,15 +636,15 @@ export function PlaygroundSection(workspace) {
               </div>
 
               <div className="subsection-block variant-overrides-block">
-                <div className="subsection-toggle-row">
-                  <div>
+                <div className="subsection-toggle-stack">
+                  <div className="subsection-toggle-row">
                     <h4>Override Model Parameters</h4>
-                    <div className="field-help">Show and apply per-variant generation overrides.</div>
+                    <ToggleField
+                      checked={Boolean(variant.useOverrides)}
+                      onChange={(enabled) => handleVariantOverrideToggle(variant.id, enabled)}
+                    />
                   </div>
-                  <ToggleField
-                    checked={Boolean(variant.useOverrides)}
-                    onChange={(enabled) => handleVariantOverrideToggle(variant.id, enabled)}
-                  />
+                  <div className="field-help">Show and apply per-variant generation overrides.</div>
                 </div>
                 {variant.useOverrides ? (
                   <div className="inline-grid">
