@@ -809,6 +809,7 @@ export function PlaygroundSection(workspace) {
 export function BatchSection(workspace) {
   const {
     availableModelOptions,
+    batchGenerating,
     batchSampleCount,
     batchVerificationFilter,
     batchSelection,
@@ -833,8 +834,13 @@ export function BatchSection(workspace) {
       <WorkspacePageHeader
         actions={
           <div className="button-row">
-            <button className="primary-button" onClick={handleBatchRun} type="button">
-              Run batch
+            <button
+              className="primary-button"
+              disabled={batchGenerating || !promptTemplates.length}
+              onClick={() => handleBatchRun()}
+              type="button"
+            >
+              {batchGenerating ? "Generating…" : "Run batch"}
             </button>
             <button
               className="tertiary-button"
@@ -849,18 +855,35 @@ export function BatchSection(workspace) {
         title="Batches"
       />
 
-      <div className="two-column">
-        <section className="panel-block">
+      <section className="panel-block">
+        <div className="utility-row section-head">
           <h3>Playground saved cases</h3>
+          <button
+            className="secondary-button"
+            disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
+            onClick={() =>
+              handleBatchRun({
+                includeSavedCases: true,
+                includeImportedCases: false,
+                includeSourcePool: false,
+              })
+            }
+            type="button"
+          >
+            Generate
+          </button>
+        </div>
           {testCases.length ? (
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Use</th>
-                    <th>Name</th>
-                    <th>Tags</th>
-                    <th>Length</th>
+                    <th>Team Name</th>
+                    <th>Org Name</th>
+                    <th>Verified</th>
+                    <th>Affiliation</th>
+                    <th>Causes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -879,9 +902,11 @@ export function BatchSection(workspace) {
                           type="checkbox"
                         />
                       </td>
-                      <td>{testCase.name}</td>
+                      <td>{testCase.teamName}</td>
+                      <td>{testCase.organizationName}</td>
+                      <td>{testCase.isVerified ? <BadgeCheckIcon /> : null}</td>
+                      <td>{testCase.teamAffiliation}</td>
                       <td>{testCase.causeTags.join(", ")}</td>
-                      <td>{testCase.messageLength}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -890,10 +915,27 @@ export function BatchSection(workspace) {
           ) : (
             <div className="empty-state">No saved cases yet.</div>
           )}
-        </section>
+      </section>
 
+      <div className="two-column">
         <section className="panel-block">
-          <h3>CSV import</h3>
+          <div className="utility-row section-head">
+            <h3>CSV import</h3>
+            <button
+              className="secondary-button"
+              disabled={batchGenerating || !promptTemplates.length || !importedCases.length}
+              onClick={() =>
+                handleBatchRun({
+                  includeSavedCases: false,
+                  includeImportedCases: true,
+                  includeSourcePool: false,
+                })
+              }
+              type="button"
+            >
+              Generate
+            </button>
+          </div>
           <div className="field-help" style={{ marginBottom: 12 }}>
             Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
             TEAM_ACTIVITY, TEAM_AFFILIATION.
@@ -935,19 +977,31 @@ export function BatchSection(workspace) {
             <div className="empty-state section-note">Import a CSV to stage additional batch cases.</div>
           )}
         </section>
-      </div>
 
-      <section className="panel-block page-section">
-        <div className="utility-row section-head">
-          <div>
-            <h3>Source Pool</h3>
-            <div className="field-help">
-              Dedicated randomization dataset. Current pool: {sourcePoolStats.total} rows,{" "}
-              {sourcePoolStats.verified} verified, {sourcePoolStats.unverified} unverified.
+        <section className="panel-block">
+          <div className="utility-row section-head">
+            <div>
+              <h3>Source Pool</h3>
+              <div className="field-help">
+                Dedicated randomization dataset. Current pool: {sourcePoolStats.total} rows,{" "}
+                {sourcePoolStats.verified} verified, {sourcePoolStats.unverified} unverified.
+              </div>
             </div>
+            <button
+              className="secondary-button"
+              disabled={batchGenerating || !promptTemplates.length || (Number(batchSampleCount) || 0) <= 0}
+              onClick={() =>
+                handleBatchRun({
+                  includeSavedCases: false,
+                  includeImportedCases: false,
+                  includeSourcePool: true,
+                })
+              }
+              type="button"
+            >
+              Generate
+            </button>
           </div>
-        </div>
-        <div className="two-column">
           <section className="subsection-block">
             <h4>Batch Sampling</h4>
             <div className="inline-grid">
@@ -976,8 +1030,8 @@ export function BatchSection(workspace) {
               Source-pool batch rows get 1-3 random cause tags automatically and are used only for that run.
             </div>
           </section>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <section className="panel-block page-section">
         <div className="variant-row section-head">
