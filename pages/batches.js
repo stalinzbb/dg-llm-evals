@@ -21,7 +21,7 @@ export default function BatchesPage() {
         { label: "Runs", value: workspace.runs.length },
       ]}
       theme={workspace.theme}
-      title="Batches · Signal Forge"
+      title="Batches · Eval AI"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />

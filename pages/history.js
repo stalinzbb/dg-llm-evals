@@ -20,7 +20,7 @@ export default function HistoryPage() {
         { label: "Storage", value: workspace.storageMode },
       ]}
       theme={workspace.theme}
-      title="History · Signal Forge"
+      title="History · Eval AI"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />

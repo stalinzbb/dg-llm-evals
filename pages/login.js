@@ -42,13 +42,13 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Login · Signal Forge</title>
+        <title>Login · Eval AI</title>
       </Head>
       <div className={`${displayFont.variable} ${bodyFont.variable} auth-shell`}>
         <div className="auth-card">
           <section className="auth-panel">
             <div className="section-label">Private workspace</div>
-            <h1>Open Signal Forge.</h1>
+            <h1>Open Eval AI.</h1>
             <p>
               A lightweight internal tool for prompt experiments, batch runs, and saved output
               review across fundraiser messaging workflows.

@@ -21,7 +21,7 @@ export default function PlaygroundPage() {
         { label: "Storage", value: workspace.storageMode },
       ]}
       theme={workspace.theme}
-      title="Playground · Signal Forge"
+      title="Playground · Eval AI"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />

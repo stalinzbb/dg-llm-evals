@@ -66,7 +66,7 @@ export default function WorkspaceLayout({
   return (
     <>
       <Head>
-        <title>{title || "DG Fundraiser LLM Eval Tool"}</title>
+        <title>{title || "Eval AI"}</title>
         <meta
           content={description || "Generate, compare, and batch-evaluate fundraiser messages."}
           name="description"
@@ -82,7 +82,7 @@ export default function WorkspaceLayout({
                   <LogoGlyph />
                 </div>
                 <div className="brand-copy">
-                  <h1>Evall</h1>
+                  <h1>Eval AI</h1>
                 </div>
               </div>
               <button

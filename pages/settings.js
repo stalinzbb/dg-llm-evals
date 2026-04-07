@@ -20,7 +20,7 @@ export default function SettingsPage() {
         { label: "Runs", value: workspace.runs.length },
       ]}
       theme={workspace.theme}
-      title="Settings · Signal Forge"
+      title="Settings · Eval AI"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />
