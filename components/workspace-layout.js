@@ -46,14 +46,17 @@ export default function WorkspaceLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
+    const datasetValue = document.documentElement.dataset.sidebarCollapsed;
     const storedValue = window.localStorage.getItem("dg-sidebar-collapsed");
-    setIsCollapsed(storedValue === "true");
+    const nextValue = storedValue === null ? datasetValue === "true" : storedValue === "true";
+    setIsCollapsed(nextValue);
   }, []);
 
   function toggleSidebar() {
     setIsCollapsed((current) => {
       const next = !current;
       window.localStorage.setItem("dg-sidebar-collapsed", String(next));
+      document.documentElement.dataset.sidebarCollapsed = String(next);
       return next;
     });
   }
