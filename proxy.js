@@ -11,7 +11,8 @@ export function proxy(request) {
     pathname === "/login" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.startsWith("/api/auth/login");
+    pathname.startsWith("/api/auth/login") ||
+    pathname.startsWith("/api/auth/logout");
 
   if (allowed) {
     return NextResponse.next();

@@ -1180,10 +1180,26 @@ function Field({ label, onChange, type = "text", value, ...props }) {
 
 function TextAreaField({ label, onChange, value }) {
   return (
-    <div className="field-group">
-      <label>{label}</label>
-      <textarea onChange={(event) => onChange(event.target.value)} value={value} />
-    </div>
+    <WorkspaceLayout
+      currentPage="playground"
+      description="Generate and compare fundraiser messages with a focused playground."
+      stats={[
+        {
+          label: "Generation",
+          value: workspace.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
+        },
+        { label: "Saved cases", value: workspace.testCases.length },
+        { label: "Source pool", value: workspace.sourcePoolStats.total },
+        { label: "Templates", value: workspace.promptTemplates.length },
+        { label: "Storage", value: workspace.storageMode },
+      ]}
+      theme={workspace.theme}
+      title="Playground · Eval AI"
+      toggleTheme={workspace.toggleTheme}
+    >
+      <WorkspaceStatus workspace={workspace} />
+      {!workspace.loading ? <PlaygroundSection {...workspace} /> : null}
+    </WorkspaceLayout>
   );
 }
 
