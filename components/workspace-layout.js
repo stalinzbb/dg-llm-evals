@@ -51,6 +51,7 @@ export default function WorkspaceLayout({
   title,
   description,
   stats,
+  onNavClick,
 }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(getInitialSidebarCollapsedState);
@@ -107,18 +108,40 @@ export default function WorkspaceLayout({
                 <nav className="sidebar-nav" aria-label="Primary">
                   {navItems.map((item) => {
                     const Icon = item.icon;
-                    return (
-                      <Link
-                        aria-current={currentPage === item.page ? "page" : undefined}
-                        className={`sidebar-link ${currentPage === item.page ? "is-active" : ""}`}
-                        href={item.href}
-                        key={item.href}
-                      >
+                    const isActive = currentPage === item.page;
+                    const className = `sidebar-link ${isActive ? "is-active" : ""}`;
+                    const content = (
+                      <>
                         <span className="sidebar-link-icon">
                           <Icon />
                         </span>
                         <span className="sidebar-link-text">{item.label}</span>
-                      </Link>
+                      </>
+                    );
+
+                    if (item.page === "settings" || !onNavClick) {
+                      return (
+                        <Link
+                          aria-current={isActive ? "page" : undefined}
+                          className={className}
+                          href={item.href}
+                          key={item.href}
+                        >
+                          {content}
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <button
+                        aria-current={isActive ? "page" : undefined}
+                        className={className}
+                        key={item.page}
+                        onClick={() => onNavClick(item.page)}
+                        type="button"
+                      >
+                        {content}
+                      </button>
                     );
                   })}
                 </nav>
