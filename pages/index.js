@@ -3,13 +3,8 @@ import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 
 import ResultCard from "@/components/result-card";
-import {
-  CAUSE_TAG_OPTIONS,
-  DEFAULT_GENERATION_SETTINGS,
-  DEFAULT_PROMPT_TEMPLATE,
-  DEFAULT_TEST_CASE,
-  MODEL_OPTIONS,
-} from "@/lib/constants";
+import { createDefaultAppSettings, createInitialVariant, normalizeAppSettings } from "@/lib/app-settings";
+import { CAUSE_TAG_OPTIONS, MODEL_OPTIONS } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
 import { normalizeTestCase } from "@/lib/prompt";
 
@@ -23,8 +18,6 @@ const bodyFont = IBM_Plex_Sans({
   variable: "--font-body",
   weight: ["400", "500", "600"],
 });
-
-const WORKSPACE_SETTINGS_STORAGE_KEY = "dg-evals-workspace-settings-v1";
 
 async function readJson(response) {
   const payload = await response.json();
@@ -46,114 +39,6 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function createInitialVariant() {
-  const defaultModel = MODEL_OPTIONS.find((model) => !model.unavailable)?.value || "";
-  return {
-    id: crypto.randomUUID(),
-    label: "Primary",
-    model: defaultModel,
-    promptSource: "current",
-    temperature: "",
-    topP: "",
-    maxTokens: "",
-    seed: "",
-  };
-}
-
-function createDefaultWorkspaceSettings() {
-  return {
-    activeTab: "playground",
-    playgroundMode: "single",
-    caseDraft: { ...DEFAULT_TEST_CASE },
-    promptDraft: { ...DEFAULT_PROMPT_TEMPLATE },
-    generationSettings: { ...DEFAULT_GENERATION_SETTINGS },
-    variants: [createInitialVariant()],
-    batchSelection: [],
-    importedCases: [],
-  };
-}
-
-function sanitizeVariant(variant, index) {
-  const fallback = createInitialVariant();
-  const modelExists =
-    typeof variant?.model === "string" &&
-    MODEL_OPTIONS.some((option) => option.value === variant.model && !option.unavailable);
-
-  return {
-    ...fallback,
-    ...variant,
-    id: typeof variant?.id === "string" && variant.id ? variant.id : fallback.id,
-    label:
-      typeof variant?.label === "string" && variant.label
-        ? variant.label
-        : index === 0
-          ? "Primary"
-          : `Variant ${index + 1}`,
-    model: modelExists ? variant.model : fallback.model,
-    promptSource:
-      typeof variant?.promptSource === "string" && variant.promptSource
-        ? variant.promptSource
-        : "current",
-  };
-}
-
-function normalizeWorkspaceSettings(value) {
-  const defaults = createDefaultWorkspaceSettings();
-  if (!value || typeof value !== "object") {
-    return defaults;
-  }
-
-  return {
-    activeTab:
-      value.activeTab === "playground" || value.activeTab === "batch" || value.activeTab === "history"
-        ? value.activeTab
-        : defaults.activeTab,
-    playgroundMode: value.playgroundMode === "compare" ? "compare" : defaults.playgroundMode,
-    caseDraft: normalizeTestCase({
-      ...defaults.caseDraft,
-      ...(value.caseDraft || {}),
-    }),
-    promptDraft: {
-      ...defaults.promptDraft,
-      ...(value.promptDraft || {}),
-    },
-    generationSettings: {
-      ...defaults.generationSettings,
-      ...(value.generationSettings || {}),
-    },
-    variants:
-      Array.isArray(value.variants) && value.variants.length
-        ? value.variants.map((variant, index) => sanitizeVariant(variant, index))
-        : defaults.variants,
-    batchSelection: Array.isArray(value.batchSelection)
-      ? value.batchSelection.filter((item) => typeof item === "string")
-      : defaults.batchSelection,
-    importedCases: Array.isArray(value.importedCases)
-      ? value.importedCases.map((item) => normalizeTestCase(item))
-      : defaults.importedCases,
-  };
-}
-
-function readWorkspaceSettings() {
-  if (typeof window === "undefined") {
-    return createDefaultWorkspaceSettings();
-  }
-
-  try {
-    const raw = window.localStorage.getItem(WORKSPACE_SETTINGS_STORAGE_KEY);
-    return raw ? normalizeWorkspaceSettings(JSON.parse(raw)) : createDefaultWorkspaceSettings();
-  } catch (error) {
-    console.error("Failed to restore workspace settings.", error);
-    return createDefaultWorkspaceSettings();
-  }
-}
-
-function writeWorkspaceSettings(settings) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(WORKSPACE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-}
 
 function shapeImportedCase(record) {
   const causeTags = record.causeTags
@@ -203,6 +88,7 @@ function formatModelOption(model) {
 }
 
 export default function Home() {
+  const defaultSettingsRef = useRef(createDefaultAppSettings());
   const [activeTab, setActiveTab] = useState("playground");
   const [playgroundMode, setPlaygroundMode] = useState("single");
   const [testCases, setTestCases] = useState([]);
@@ -213,17 +99,17 @@ export default function Home() {
     openRouterConfigured: false,
     gateEnabled: false,
   });
-  const [caseDraft, setCaseDraft] = useState(DEFAULT_TEST_CASE);
-  const [promptDraft, setPromptDraft] = useState(DEFAULT_PROMPT_TEMPLATE);
-  const [generationSettings, setGenerationSettings] = useState(DEFAULT_GENERATION_SETTINGS);
-  const [variants, setVariants] = useState([createInitialVariant()]);
+  const [caseDraft, setCaseDraft] = useState(defaultSettingsRef.current.caseDraft);
+  const [promptDraft, setPromptDraft] = useState(defaultSettingsRef.current.promptDraft);
+  const [generationSettings, setGenerationSettings] = useState(defaultSettingsRef.current.generationSettings);
+  const [variants, setVariants] = useState(defaultSettingsRef.current.variants);
   const [selectedRunId, setSelectedRunId] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [historySearch, setHistorySearch] = useState("");
-  const [batchSelection, setBatchSelection] = useState([]);
-  const [importedCases, setImportedCases] = useState([]);
+  const [batchSelection, setBatchSelection] = useState(defaultSettingsRef.current.batchSelection);
+  const [importedCases, setImportedCases] = useState(defaultSettingsRef.current.importedCases);
   const [theme, setTheme] = useState("light");
   const [toast, setToast] = useState(null);
   const [activityStates, setActivityStates] = useState({});
@@ -231,6 +117,7 @@ export default function Home() {
 
   const workspaceSettingsReadyRef = useRef(false);
   const workspaceSaveTimerRef = useRef(null);
+  const skipNextWorkspaceSaveRef = useRef(false);
 
   const deferredSearch = useDeferredValue(historySearch);
   const selectedRun =
@@ -271,10 +158,22 @@ export default function Home() {
     setLoading(true);
     try {
       const payload = await readJson(await fetch("/api/bootstrap"));
+      const appSettings = normalizeAppSettings(payload.appSettings);
+      skipNextWorkspaceSaveRef.current = true;
       setTestCases(payload.testCases || []);
       setPromptTemplates(payload.promptTemplates || []);
       setRuns(payload.runs || []);
       setStorageMode(payload.storageMode || "local");
+      setActiveTab(appSettings.activeTab);
+      setPlaygroundMode(appSettings.playgroundMode);
+      setCaseDraft(appSettings.caseDraft);
+      setPromptDraft(appSettings.promptDraft);
+      setGenerationSettings(appSettings.generationSettings);
+      setVariants(appSettings.variants);
+      setBatchSelection(appSettings.batchSelection);
+      setImportedCases(appSettings.importedCases);
+      workspaceSettingsReadyRef.current = true;
+      setWorkspaceSaveState("Saved");
       setPlatformStatus({
         openRouterConfigured: payload.openRouterConfigured,
         gateEnabled: payload.gateEnabled,
@@ -284,6 +183,8 @@ export default function Home() {
       }
     } catch (error) {
       setErrorMessage(error.message);
+      workspaceSettingsReadyRef.current = true;
+      setWorkspaceSaveState("Save unavailable");
     } finally {
       setLoading(false);
     }
@@ -291,19 +192,6 @@ export default function Home() {
 
   useEffect(() => {
     loadAppData();
-  }, []);
-
-  useEffect(() => {
-    const storedSettings = readWorkspaceSettings();
-    setActiveTab(storedSettings.activeTab);
-    setPlaygroundMode(storedSettings.playgroundMode);
-    setCaseDraft(storedSettings.caseDraft);
-    setPromptDraft(storedSettings.promptDraft);
-    setGenerationSettings(storedSettings.generationSettings);
-    setVariants(storedSettings.variants);
-    setBatchSelection(storedSettings.batchSelection);
-    setImportedCases(storedSettings.importedCases);
-    workspaceSettingsReadyRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -320,20 +208,31 @@ export default function Home() {
       return undefined;
     }
 
+    if (skipNextWorkspaceSaveRef.current) {
+      skipNextWorkspaceSaveRef.current = false;
+      return undefined;
+    }
+
     setWorkspaceSaveState("Saving…");
     window.clearTimeout(workspaceSaveTimerRef.current);
-    workspaceSaveTimerRef.current = window.setTimeout(() => {
+    workspaceSaveTimerRef.current = window.setTimeout(async () => {
       try {
-        writeWorkspaceSettings({
-          activeTab,
-          playgroundMode,
-          caseDraft,
-          promptDraft,
-          generationSettings,
-          variants,
-          batchSelection,
-          importedCases,
-        });
+        await readJson(
+          await fetch("/api/app-settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              activeTab,
+              playgroundMode,
+              caseDraft,
+              promptDraft,
+              generationSettings,
+              variants,
+              batchSelection,
+              importedCases,
+            }),
+          }),
+        );
         setWorkspaceSaveState("Saved");
       } catch (error) {
         console.error("Failed to save workspace settings.", error);
