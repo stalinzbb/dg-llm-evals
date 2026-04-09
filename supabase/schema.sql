@@ -1,3 +1,10 @@
+create table if not exists app_settings (
+  id text primary key,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists test_cases (
   id text primary key,
   name text not null,

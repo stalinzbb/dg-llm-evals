@@ -34,6 +34,7 @@ If Supabase is not configured, the app stores data in `.runtime/dg-llm-evals.jso
 ## Supabase
 
 Run the schema in [supabase/schema.sql](/Users/stalinthomas/side_projects/dg-llm-evals/supabase/schema.sql) before enabling Supabase credentials.
+If Supabase is already configured for this app, apply the latest schema update so the new `app_settings` table exists before deploying these changes.
 
 ## Local Development
 
