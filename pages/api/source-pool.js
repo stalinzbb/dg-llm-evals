@@ -26,9 +26,11 @@ export default async function handler(req, res) {
       const action = req.body?.action || "stats";
 
       if (action === "import") {
-        const csvText = req.body?.csvText || "";
-        const records = parseCsv(csvText);
-        const payload = await importSourcePool(records);
+        const replace = req.body?.replace !== false;
+        const entries = Array.isArray(req.body?.entries)
+          ? req.body.entries
+          : parseCsv(req.body?.csvText || "");
+        const payload = await importSourcePool(entries, { replace });
         res.status(200).json(payload);
         return;
       }
