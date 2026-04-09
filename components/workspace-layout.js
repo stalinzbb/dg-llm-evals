@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   BatchesIcon,
@@ -33,6 +33,16 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: SettingsIcon, page: "settings" },
 ];
 
+function getInitialSidebarCollapsedState() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const datasetValue = document.documentElement.dataset.sidebarCollapsed;
+  const storedValue = window.localStorage.getItem("dg-sidebar-collapsed");
+  return storedValue === null ? datasetValue === "true" : storedValue === "true";
+}
+
 export default function WorkspaceLayout({
   children,
   currentPage,
@@ -43,14 +53,7 @@ export default function WorkspaceLayout({
   stats,
 }) {
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  useEffect(() => {
-    const datasetValue = document.documentElement.dataset.sidebarCollapsed;
-    const storedValue = window.localStorage.getItem("dg-sidebar-collapsed");
-    const nextValue = storedValue === null ? datasetValue === "true" : storedValue === "true";
-    setIsCollapsed(nextValue);
-  }, []);
+  const [isCollapsed, setIsCollapsed] = useState(getInitialSidebarCollapsedState);
 
   function toggleSidebar() {
     setIsCollapsed((current) => {

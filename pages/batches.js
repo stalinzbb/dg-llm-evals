@@ -19,6 +19,7 @@ export default function BatchesPage() {
         { label: "Source pool", value: workspace.sourcePoolStats.total },
         { label: "Templates", value: workspace.promptTemplates.length },
         { label: "Runs", value: workspace.runs.length },
+        { label: "Workspace", value: workspace.workspaceSaveState },
       ]}
       theme={workspace.theme}
       title="Batches · Eval AI"
