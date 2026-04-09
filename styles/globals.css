@@ -84,6 +84,14 @@ button {
   cursor: pointer;
 }
 
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -232,6 +240,12 @@ textarea {
 .utility-row {
   align-items: center;
   justify-content: space-between;
+}
+
+.status-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .meta-item,
@@ -405,6 +419,37 @@ textarea {
   font-size: 0.8rem;
 }
 
+.activity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+.activity-pill.is-success {
+  border-color: color-mix(in srgb, var(--success) 26%, var(--line));
+  color: var(--success);
+}
+
+.activity-pill.is-error {
+  border-color: color-mix(in srgb, var(--danger) 26%, var(--line));
+  color: var(--danger);
+}
+
+.spinner {
+  width: var(--spinner-size, 12px);
+  height: var(--spinner-size, 12px);
+  border: 2px solid color-mix(in srgb, var(--brand) 18%, transparent);
+  border-top-color: var(--brand);
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
 .metric-pill strong,
 .badge strong {
   color: var(--ink);
@@ -518,6 +563,54 @@ td {
   margin-bottom: 22px;
   color: var(--ink-soft);
   line-height: 1.65;
+}
+
+.toast-shell {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  width: min(92vw, 360px);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.toast-loading {
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--line));
+}
+
+.toast-success {
+  border-color: color-mix(in srgb, var(--success) 24%, var(--line));
+}
+
+.toast-error {
+  border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
+}
+
+.toast-title {
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.toast-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1120px) {

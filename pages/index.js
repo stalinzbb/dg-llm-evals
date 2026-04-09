@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 
 import ResultCard from "@/components/result-card";
 import {
@@ -23,6 +23,8 @@ const bodyFont = IBM_Plex_Sans({
   variable: "--font-body",
   weight: ["400", "500", "600"],
 });
+
+const WORKSPACE_SETTINGS_STORAGE_KEY = "dg-evals-workspace-settings-v1";
 
 async function readJson(response) {
   const payload = await response.json();
@@ -56,6 +58,101 @@ function createInitialVariant() {
     maxTokens: "",
     seed: "",
   };
+}
+
+function createDefaultWorkspaceSettings() {
+  return {
+    activeTab: "playground",
+    playgroundMode: "single",
+    caseDraft: { ...DEFAULT_TEST_CASE },
+    promptDraft: { ...DEFAULT_PROMPT_TEMPLATE },
+    generationSettings: { ...DEFAULT_GENERATION_SETTINGS },
+    variants: [createInitialVariant()],
+    batchSelection: [],
+    importedCases: [],
+  };
+}
+
+function sanitizeVariant(variant, index) {
+  const fallback = createInitialVariant();
+  const modelExists =
+    typeof variant?.model === "string" &&
+    MODEL_OPTIONS.some((option) => option.value === variant.model && !option.unavailable);
+
+  return {
+    ...fallback,
+    ...variant,
+    id: typeof variant?.id === "string" && variant.id ? variant.id : fallback.id,
+    label:
+      typeof variant?.label === "string" && variant.label
+        ? variant.label
+        : index === 0
+          ? "Primary"
+          : `Variant ${index + 1}`,
+    model: modelExists ? variant.model : fallback.model,
+    promptSource:
+      typeof variant?.promptSource === "string" && variant.promptSource
+        ? variant.promptSource
+        : "current",
+  };
+}
+
+function normalizeWorkspaceSettings(value) {
+  const defaults = createDefaultWorkspaceSettings();
+  if (!value || typeof value !== "object") {
+    return defaults;
+  }
+
+  return {
+    activeTab:
+      value.activeTab === "playground" || value.activeTab === "batch" || value.activeTab === "history"
+        ? value.activeTab
+        : defaults.activeTab,
+    playgroundMode: value.playgroundMode === "compare" ? "compare" : defaults.playgroundMode,
+    caseDraft: normalizeTestCase({
+      ...defaults.caseDraft,
+      ...(value.caseDraft || {}),
+    }),
+    promptDraft: {
+      ...defaults.promptDraft,
+      ...(value.promptDraft || {}),
+    },
+    generationSettings: {
+      ...defaults.generationSettings,
+      ...(value.generationSettings || {}),
+    },
+    variants:
+      Array.isArray(value.variants) && value.variants.length
+        ? value.variants.map((variant, index) => sanitizeVariant(variant, index))
+        : defaults.variants,
+    batchSelection: Array.isArray(value.batchSelection)
+      ? value.batchSelection.filter((item) => typeof item === "string")
+      : defaults.batchSelection,
+    importedCases: Array.isArray(value.importedCases)
+      ? value.importedCases.map((item) => normalizeTestCase(item))
+      : defaults.importedCases,
+  };
+}
+
+function readWorkspaceSettings() {
+  if (typeof window === "undefined") {
+    return createDefaultWorkspaceSettings();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(WORKSPACE_SETTINGS_STORAGE_KEY);
+    return raw ? normalizeWorkspaceSettings(JSON.parse(raw)) : createDefaultWorkspaceSettings();
+  } catch (error) {
+    console.error("Failed to restore workspace settings.", error);
+    return createDefaultWorkspaceSettings();
+  }
+}
+
+function writeWorkspaceSettings(settings) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(WORKSPACE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }
 
 function shapeImportedCase(record) {
@@ -128,10 +225,47 @@ export default function Home() {
   const [batchSelection, setBatchSelection] = useState([]);
   const [importedCases, setImportedCases] = useState([]);
   const [theme, setTheme] = useState("light");
+  const [toast, setToast] = useState(null);
+  const [activityStates, setActivityStates] = useState({});
+  const [workspaceSaveState, setWorkspaceSaveState] = useState("Saved");
+
+  const workspaceSettingsReadyRef = useRef(false);
+  const workspaceSaveTimerRef = useRef(null);
 
   const deferredSearch = useDeferredValue(historySearch);
   const selectedRun =
     runs.find((run) => run.id === selectedRunId) || runs[0] || null;
+
+  function updateActivity(scope, activity) {
+    setActivityStates((current) => {
+      const next = { ...current };
+      if (!activity) {
+        delete next[scope];
+      } else {
+        next[scope] = activity;
+      }
+      return next;
+    });
+  }
+
+  function showToast(kind, message, scope) {
+    setToast({
+      id: crypto.randomUUID(),
+      kind,
+      message,
+      scope,
+    });
+  }
+
+  function startScopedActivity(scope, message) {
+    updateActivity(scope, { phase: "running", message });
+    showToast("loading", message, scope);
+  }
+
+  function finishScopedActivity(scope, message, kind = "success") {
+    updateActivity(scope, { phase: kind, message });
+    showToast(kind, message, scope);
+  }
 
   async function loadAppData() {
     setLoading(true);
@@ -160,6 +294,19 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const storedSettings = readWorkspaceSettings();
+    setActiveTab(storedSettings.activeTab);
+    setPlaygroundMode(storedSettings.playgroundMode);
+    setCaseDraft(storedSettings.caseDraft);
+    setPromptDraft(storedSettings.promptDraft);
+    setGenerationSettings(storedSettings.generationSettings);
+    setVariants(storedSettings.variants);
+    setBatchSelection(storedSettings.batchSelection);
+    setImportedCases(storedSettings.importedCases);
+    workspaceSettingsReadyRef.current = true;
+  }, []);
+
+  useEffect(() => {
     const storedTheme =
       typeof window !== "undefined" ? window.localStorage.getItem("dg-evals-theme") : null;
     if (storedTheme === "dark" || storedTheme === "light") {
@@ -167,6 +314,56 @@ export default function Home() {
       document.documentElement.dataset.theme = storedTheme;
     }
   }, []);
+
+  useEffect(() => {
+    if (!workspaceSettingsReadyRef.current) {
+      return undefined;
+    }
+
+    setWorkspaceSaveState("Saving…");
+    window.clearTimeout(workspaceSaveTimerRef.current);
+    workspaceSaveTimerRef.current = window.setTimeout(() => {
+      try {
+        writeWorkspaceSettings({
+          activeTab,
+          playgroundMode,
+          caseDraft,
+          promptDraft,
+          generationSettings,
+          variants,
+          batchSelection,
+          importedCases,
+        });
+        setWorkspaceSaveState("Saved");
+      } catch (error) {
+        console.error("Failed to save workspace settings.", error);
+        setWorkspaceSaveState("Save failed");
+      }
+    }, 300);
+
+    return () => window.clearTimeout(workspaceSaveTimerRef.current);
+  }, [
+    activeTab,
+    playgroundMode,
+    caseDraft,
+    promptDraft,
+    generationSettings,
+    variants,
+    batchSelection,
+    importedCases,
+  ]);
+
+  useEffect(() => {
+    if (!toast || toast.kind === "loading") {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToast((current) => (current?.id === toast.id ? null : current));
+    }, 2800);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   function toggleTheme() {
     setTheme((current) => {
@@ -202,6 +399,7 @@ export default function Home() {
     setStatusMessage("");
     setErrorMessage("");
     try {
+      startScopedActivity("sourcePool", "Updating source pool…");
       const payload = await readJson(
         await fetch("/api/test-cases", {
           method: "POST",
@@ -212,8 +410,10 @@ export default function Home() {
       setTestCases(payload.testCases || []);
       setImportedCases([]);
       setStatusMessage("Imported cases were saved to the library.");
+      finishScopedActivity("sourcePool", "Source pool updated.");
     } catch (error) {
       setErrorMessage(error.message);
+      finishScopedActivity("sourcePool", error.message || "Source pool update failed.", "error");
     }
   }
 
@@ -239,6 +439,7 @@ export default function Home() {
     setStatusMessage("");
     setErrorMessage("");
     try {
+      showToast("loading", "Generation in progress…", "generate");
       const payload = await readJson(
         await fetch("/api/generate", {
           method: "POST",
@@ -256,8 +457,10 @@ export default function Home() {
       setSelectedRunId(payload.run.id);
       startTransition(() => setActiveTab("history"));
       setStatusMessage("Generation completed and saved to history.");
+      showToast("success", "Generation completed.", "generate");
     } catch (error) {
       setErrorMessage(error.message);
+      showToast("error", error.message || "Generation failed.", "generate");
     }
   }
 
@@ -265,6 +468,7 @@ export default function Home() {
     setStatusMessage("");
     setErrorMessage("");
     try {
+      showToast("loading", "Batch run in progress…", "batchRun");
       const payload = await readJson(
         await fetch("/api/batch-runs", {
           method: "POST",
@@ -282,8 +486,10 @@ export default function Home() {
       setSelectedRunId(payload.run.id);
       startTransition(() => setActiveTab("history"));
       setStatusMessage("Batch run completed.");
+      showToast("success", "Batch run completed.", "batchRun");
     } catch (error) {
       setErrorMessage(error.message);
+      showToast("error", error.message || "Batch run failed.", "batchRun");
     }
   }
 
@@ -674,6 +880,11 @@ export default function Home() {
   }
 
   function renderBatch() {
+    const csvImportActivity = activityStates.csvImport;
+    const sourcePoolActivity = activityStates.sourcePool;
+    const isCsvImporting = csvImportActivity?.phase === "running";
+    const isSavingSourcePool = sourcePoolActivity?.phase === "running";
+
     return (
       <>
         <div className="content-header">
@@ -742,7 +953,13 @@ export default function Home() {
           </section>
 
           <section className="panel-block">
-            <h3>CSV import</h3>
+            <div className="utility-row">
+              <h3>CSV import</h3>
+              <div className="status-chip-row">
+                <ActivityStatus activity={csvImportActivity} idleLabel="Ready" />
+                <ActivityStatus activity={sourcePoolActivity} idleLabel="Source pool idle" />
+              </div>
+            </div>
             <div className="field-help" style={{ marginBottom: 12 }}>
               Expected headers: name, organizationName, teamName, organizationType, teamActivity,
               teamAffiliation, causeTags, messageLength. Use `|` between cause tags.
@@ -757,10 +974,28 @@ export default function Home() {
                   if (!file) {
                     return;
                   }
-                  const text = await file.text();
-                  const parsed = parseCsv(text).map(shapeImportedCase);
-                  setImportedCases(parsed);
+                  setErrorMessage("");
+                  startScopedActivity("csvImport", `Importing ${file.name}…`);
+                  try {
+                    const text = await file.text();
+                    const parsed = parseCsv(text).map(shapeImportedCase);
+                    setImportedCases(parsed);
+                    finishScopedActivity(
+                      "csvImport",
+                      `Imported ${parsed.length} ${parsed.length === 1 ? "case" : "cases"} from CSV.`,
+                    );
+                  } catch (error) {
+                    setErrorMessage(error.message);
+                    finishScopedActivity(
+                      "csvImport",
+                      error.message || "CSV import failed.",
+                      "error",
+                    );
+                  } finally {
+                    event.target.value = "";
+                  }
                 }}
+                disabled={isCsvImporting}
                 type="file"
               />
             </div>
@@ -770,7 +1005,12 @@ export default function Home() {
                   {importedCases.length} imported cases are staged for the next batch run.
                 </div>
                 <div className="button-row" style={{ marginTop: 16 }}>
-                  <button className="ghost-button" onClick={handleSaveImportedCases} type="button">
+                  <button
+                    className="ghost-button"
+                    disabled={isSavingSourcePool}
+                    onClick={handleSaveImportedCases}
+                    type="button"
+                  >
                     Save imported cases
                   </button>
                   <button
@@ -985,6 +1225,10 @@ export default function Home() {
                   <span>Storage</span>
                   <strong>{storageMode}</strong>
                 </div>
+                <div className="meta-item">
+                  <span>Workspace settings</span>
+                  <strong>{workspaceSaveState}</strong>
+                </div>
               </div>
             </aside>
 
@@ -1007,6 +1251,21 @@ export default function Home() {
           </div>
         </div>
       </div>
+      {toast ? (
+        <div className={`toast-shell toast-${toast.kind}`}>
+          <div className="toast-title">
+            {toast.kind === "loading"
+              ? "Activity in progress"
+              : toast.kind === "error"
+                ? "Activity failed"
+                : "Activity completed"}
+          </div>
+          <div className="toast-message">
+            {toast.kind === "loading" ? <Spinner size={14} /> : null}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -1027,4 +1286,21 @@ function TextAreaField({ label, onChange, value }) {
       <textarea onChange={(event) => onChange(event.target.value)} value={value} />
     </div>
   );
+}
+
+function ActivityStatus({ activity, idleLabel }) {
+  if (!activity) {
+    return <span className="activity-pill">{idleLabel}</span>;
+  }
+
+  return (
+    <span className={`activity-pill is-${activity.phase}`}>
+      {activity.phase === "running" ? <Spinner size={12} /> : null}
+      <span>{activity.message}</span>
+    </span>
+  );
+}
+
+function Spinner({ size = 12 }) {
+  return <span className="spinner" style={{ "--spinner-size": `${size}px` }} aria-hidden="true" />;
 }
