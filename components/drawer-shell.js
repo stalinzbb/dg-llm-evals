@@ -1,37 +1,24 @@
-import { CloseIcon } from "@/components/icons";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
-import styles from "@/components/drawer-shell.module.css";
-
-export default function DrawerShell({
-  ariaLabel,
-  children,
-  helperText,
-  onClose,
-  panelClassName = "",
-  title,
-}) {
-  const panelClasses = [styles.drawer, panelClassName].filter(Boolean).join(" ");
-
+export default function DrawerShell({ children, helperText, onClose, title }) {
   return (
-    <>
-      <button aria-label={ariaLabel} className={styles.backdrop} onClick={onClose} type="button" />
-      <aside className={panelClasses}>
-        <div className={styles.header}>
-          <div>
-            <h3>{title}</h3>
-            {helperText ? <div className="field-help">{helperText}</div> : null}
-          </div>
-          <button
-            aria-label={ariaLabel}
-            className={`ghost-button ${styles.iconButton}`}
-            onClick={onClose}
-            type="button"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-        <div className={styles.body}>{children}</div>
-      </aside>
-    </>
+    <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        className="flex w-[500px] flex-col gap-0 p-0 sm:max-w-[500px]"
+        side="right"
+      >
+        <SheetHeader className="border-b p-4">
+          <SheetTitle>{title}</SheetTitle>
+          {helperText ? <SheetDescription>{helperText}</SheetDescription> : null}
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+      </SheetContent>
+    </Sheet>
   );
 }

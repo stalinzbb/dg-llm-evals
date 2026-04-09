@@ -1,5 +1,19 @@
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
 function formatCurrency(value) {
   if (value === null || value === undefined) {
     return "N/A";
@@ -7,16 +21,25 @@ function formatCurrency(value) {
   return `$${value.toFixed(6)}`;
 }
 
+const RATING_FIELDS = [
+  ["clarity", "Clarity"],
+  ["specificity", "Specificity"],
+  ["fundraiserRelevance", "Fundraiser relevance"],
+  ["emotionalResonance", "Emotional resonance"],
+  ["brandSafety", "Brand safety"],
+  ["overall", "Overall"],
+];
+
 export default function ResultCard({ result, onSaveRating, showRating = true }) {
   const [view, setView] = useState("cause");
   const [showRequestDetails, setShowRequestDetails] = useState(false);
   const [rating, setRating] = useState({
-    clarity: 3,
-    specificity: 3,
-    fundraiserRelevance: 3,
-    emotionalResonance: 3,
-    brandSafety: 3,
-    overall: 3,
+    clarity: "3",
+    specificity: "3",
+    fundraiserRelevance: "3",
+    emotionalResonance: "3",
+    brandSafety: "3",
+    overall: "3",
     winner: false,
     notes: "",
   });
@@ -52,155 +75,164 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
       : result.metrics?.fullMessageCharacters || 0;
 
   return (
-    <article className="result-card">
-      <div className="result-meta-row">
-        <div>
-          <div className="result-title">{result.variantLabel}</div>
-          <div className="field-help">
-            {result.model} · {result.promptTemplateName || "Current draft recipe"} · result ID {result.id}
+    <Card className="gap-0">
+      <CardContent className="grid gap-4 pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium text-foreground">{result.variantLabel}</p>
+            <p className="text-xs text-muted-foreground">
+              {result.model} · {result.promptTemplateName || "Current draft recipe"} · result ID{" "}
+              {result.id}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {result.isVerified ? <Badge variant="secondary">Verified org</Badge> : null}
+            <Badge variant="outline">
+              <strong>{result.provider}</strong>
+              <span className="ml-1 font-normal">provider</span>
+            </Badge>
           </div>
         </div>
-        <div className="tag-row">
-          {result.isVerified ? <span className="badge">Verified org</span> : null}
-          <span className="badge">
-            <strong>{result.provider}</strong>
-            provider
+
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            [String(result.metrics?.promptTokens ?? 0), "input tokens"],
+            [String(result.metrics?.completionTokens ?? 0), "output tokens"],
+            [formatCurrency(result.metrics?.estimatedCost ?? null), "est. cost"],
+            [`${result.metrics?.latencyMs ?? 0}ms`, "latency"],
+          ].map(([value, label]) => (
+            <Badge key={label} className="gap-1 font-normal" variant="outline">
+              <strong className="font-semibold">{value}</strong> {label}
+            </Badge>
+          ))}
+        </div>
+
+        <div className="flex gap-1">
+          <Button
+            onClick={() => setView("cause")}
+            size="sm"
+            type="button"
+            variant={view === "cause" ? "secondary" : "ghost"}
+          >
+            Cause only
+          </Button>
+          <Button
+            onClick={() => setView("full")}
+            size="sm"
+            type="button"
+            variant={view === "full" ? "secondary" : "ghost"}
+          >
+            Full message
+          </Button>
+        </div>
+
+        <div className="min-h-[80px] rounded-lg bg-muted p-3 font-mono text-sm whitespace-pre-wrap">
+          {result.error ? `Error: ${result.error}` : message}
+        </div>
+
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{characterCount} characters in this view</span>
+          <span>
+            {result.caseName}
+            {result.sourceType ? ` · ${result.sourceType.replace(/_/g, " ")}` : ""}
           </span>
         </div>
-      </div>
 
-      <div className="metric-strip">
-        <span className="metric-pill">
-          <strong>{result.metrics?.promptTokens ?? 0}</strong> input tokens
-        </span>
-        <span className="metric-pill">
-          <strong>{result.metrics?.completionTokens ?? 0}</strong> output tokens
-        </span>
-        <span className="metric-pill">
-          <strong>{formatCurrency(result.metrics?.estimatedCost ?? null)}</strong> est. cost
-        </span>
-        <span className="metric-pill">
-          <strong>{result.metrics?.latencyMs ?? 0}ms</strong> latency
-        </span>
-      </div>
-
-      <div className="message-toggle">
-        <button
-          className={view === "cause" ? "is-active" : ""}
-          onClick={() => setView("cause")}
-          type="button"
-        >
-          Cause only
-        </button>
-        <button
-          className={view === "full" ? "is-active" : ""}
-          onClick={() => setView("full")}
-          type="button"
-        >
-          Full message
-        </button>
-      </div>
-
-      <div className="message-frame">{result.error ? `Error: ${result.error}` : message}</div>
-
-      <div className="status-line">
-        <span>{characterCount} characters in this view</span>
-        <span>
-          {result.caseName}
-          {result.sourceType ? ` · ${result.sourceType.replace(/_/g, " ")}` : ""}
-        </span>
-      </div>
-
-      <div className="result-actions">
-        <button
-          className="ghost-button"
-          onClick={() => setShowRequestDetails((current) => !current)}
-          type="button"
-        >
-          {showRequestDetails ? "Hide Prompt Details" : "Show Prompt Details"}
-        </button>
-      </div>
-
-      {showRequestDetails ? (
-        <div className="request-details">
-          <div className="request-detail-block">
-            <div className="request-detail-label">Model</div>
-            <div className="message-frame compact-frame">{result.model || "N/A"}</div>
-          </div>
-          <div className="request-detail-block">
-            <div className="request-detail-label">System Prompt</div>
-            <div className="message-frame compact-frame">{result.systemPrompt || "N/A"}</div>
-          </div>
-          <div className="request-detail-block">
-            <div className="request-detail-label">User Prompt</div>
-            <div className="message-frame compact-frame">{result.userPrompt || "N/A"}</div>
-          </div>
-          <div className="request-detail-block">
-            <div className="request-detail-label">Generation Settings</div>
-            <div className="message-frame compact-frame">
-              {JSON.stringify(result.generationSettings || {}, null, 2)}
-            </div>
-          </div>
+        <div>
+          <Button
+            onClick={() => setShowRequestDetails((current) => !current)}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            {showRequestDetails ? "Hide Prompt Details" : "Show Prompt Details"}
+          </Button>
         </div>
-      ) : null}
 
-      {showRating ? (
-        <div className="rating-grid" style={{ marginTop: 18 }}>
-          <div className="inline-grid">
+        {showRequestDetails ? (
+          <div className="grid gap-3">
             {[
-              ["clarity", "Clarity"],
-              ["specificity", "Specificity"],
-              ["fundraiserRelevance", "Fundraiser relevance"],
-              ["emotionalResonance", "Emotional resonance"],
-              ["brandSafety", "Brand safety"],
-              ["overall", "Overall"],
-            ].map(([key, label]) => (
-              <div className="field-group" key={key}>
-                <label htmlFor={`${result.id}-${key}`}>{label}</label>
-                <select
-                  id={`${result.id}-${key}`}
-                  value={rating[key]}
-                  onChange={(event) =>
-                    setRating((current) => ({ ...current, [key]: event.target.value }))
-                  }
-                >
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
+              ["Model", result.model || "N/A"],
+              ["System Prompt", result.systemPrompt || "N/A"],
+              ["User Prompt", result.userPrompt || "N/A"],
+              [
+                "Generation Settings",
+                JSON.stringify(result.generationSettings || {}, null, 2),
+              ],
+            ].map(([label, value]) => (
+              <div key={label} className="grid gap-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {label}
+                </p>
+                <div className="rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap">
+                  {value}
+                </div>
               </div>
             ))}
           </div>
-          <div className="field-group">
-            <label htmlFor={`${result.id}-notes`}>Review notes</label>
-            <textarea
-              id={`${result.id}-notes`}
-              value={rating.notes}
-              onChange={(event) =>
-                setRating((current) => ({ ...current, notes: event.target.value }))
-              }
-              placeholder="Why is this good or weak? What should change in the prompt?"
-            />
-          </div>
-          <div className="utility-row">
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-              <input
-                checked={rating.winner}
+        ) : null}
+
+        {showRating ? (
+          <div className="grid gap-4 border-t pt-4">
+            <div className="grid grid-cols-2 gap-3">
+              {RATING_FIELDS.map(([key, label]) => (
+                <div key={key} className="grid gap-1.5">
+                  <Label htmlFor={`${result.id}-${key}`}>{label}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setRating((current) => ({ ...current, [key]: value }))
+                    }
+                    value={String(rating[key])}
+                  >
+                    <SelectTrigger className="w-full" id={`${result.id}-${key}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <SelectItem key={value} value={String(value)}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${result.id}-notes`}>Review notes</Label>
+              <Textarea
+                id={`${result.id}-notes`}
                 onChange={(event) =>
-                  setRating((current) => ({ ...current, winner: event.target.checked }))
+                  setRating((current) => ({ ...current, notes: event.target.value }))
                 }
-                type="checkbox"
+                placeholder="Why is this good or weak? What should change in the prompt?"
+                value={rating.notes}
               />
-              Mark as preferred output
-            </label>
-            <button className="ghost-button" disabled={saving} onClick={handleSave} type="button">
-              {saving ? "Saving…" : "Save rating"}
-            </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={rating.winner}
+                  id={`${result.id}-winner`}
+                  onCheckedChange={(checked) =>
+                    setRating((current) => ({ ...current, winner: Boolean(checked) }))
+                  }
+                />
+                <Label htmlFor={`${result.id}-winner`}>Mark as preferred output</Label>
+              </div>
+              <Button
+                disabled={saving}
+                onClick={handleSave}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {saving ? "Saving…" : "Save rating"}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : null}
-    </article>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
