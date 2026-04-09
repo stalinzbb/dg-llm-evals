@@ -18,6 +18,7 @@ export default function SettingsPage() {
         { label: "Saved cases", value: workspace.testCases.length },
         { label: "Templates", value: workspace.promptTemplates.length },
         { label: "Runs", value: workspace.runs.length },
+        { label: "Workspace", value: workspace.workspaceSaveState },
       ]}
       theme={workspace.theme}
       title="Settings · Eval AI"

@@ -18,6 +18,7 @@ export default function HistoryPage() {
         { label: "Runs", value: workspace.runs.length },
         { label: "Saved cases", value: workspace.testCases.length },
         { label: "Storage", value: workspace.storageMode },
+        { label: "Workspace", value: workspace.workspaceSaveState },
       ]}
       theme={workspace.theme}
       title="History · Eval AI"

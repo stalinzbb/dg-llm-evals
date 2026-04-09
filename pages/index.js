@@ -19,6 +19,7 @@ export default function HomePage() {
         { label: "Source pool", value: workspace.sourcePoolStats.total },
         { label: "Templates", value: workspace.promptTemplates.length },
         { label: "Storage", value: workspace.storageMode },
+        { label: "Workspace", value: workspace.workspaceSaveState },
       ]}
       theme={workspace.theme}
       title="Playground · Eval AI"

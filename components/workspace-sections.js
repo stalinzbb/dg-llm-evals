@@ -135,7 +135,7 @@ export function PlaygroundSection(workspace) {
     sourcePoolStats,
   } = workspace;
   const [causeTagError, setCauseTagError] = useState("");
-  const [isResultDrawerOpen, setIsResultDrawerOpen] = useState(false);
+  const [dismissedResultKey, setDismissedResultKey] = useState("");
   const [isCaseLibraryOpen, setIsCaseLibraryOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
   const [isSharedModelParamsEnabled, setIsSharedModelParamsEnabled] = useState(false);
@@ -151,11 +151,8 @@ export function PlaygroundSection(workspace) {
     teamAffiliationConfig,
   );
 
-  useEffect(() => {
-    if (playgroundGenerating || playgroundRun) {
-      setIsResultDrawerOpen(true);
-    }
-  }, [playgroundGenerating, playgroundRun]);
+  const latestResultKey = playgroundGenerating ? "__pending__" : playgroundRun?.id || "";
+  const isResultDrawerOpen = Boolean(latestResultKey) && latestResultKey !== dismissedResultKey;
 
   function handleCauseTagToggle(tag) {
     const exists = caseDraft.causeTags.includes(tag);
@@ -708,12 +705,15 @@ export function PlaygroundSection(workspace) {
         </div>
 
         <div className="button-row section-actions">
-          <button
-            className="primary-button run-action-button"
-            disabled={playgroundGenerating}
-            onClick={handleGenerate}
-            type="button"
-          >
+            <button
+              className="primary-button run-action-button"
+              disabled={playgroundGenerating}
+              onClick={() => {
+                setDismissedResultKey("");
+                handleGenerate();
+              }}
+              type="button"
+            >
             <BoltIcon />
             {playgroundGenerating ? "Running…" : "Run"}
           </button>
@@ -733,7 +733,7 @@ export function PlaygroundSection(workspace) {
         <DrawerShell
           ariaLabel="Close latest result panel"
           helperText="Showing the current playground response only. It is not saved to history."
-          onClose={() => setIsResultDrawerOpen(false)}
+          onClose={() => setDismissedResultKey(latestResultKey)}
           title="Latest Result"
         >
           {playgroundGenerating ? (
