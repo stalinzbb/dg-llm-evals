@@ -2,7 +2,6 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
-import { useState } from "react";
 
 import {
   BatchesIcon,
@@ -11,9 +10,26 @@ import {
   LogoutIcon,
   PlaygroundIcon,
   SettingsIcon,
-  SidebarToggleIcon,
   SunMoonIcon,
 } from "@/components/icons";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -26,21 +42,14 @@ const bodyFont = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
 });
 
-const navItems = [
-  { href: "/", label: "Playground", icon: PlaygroundIcon, page: "playground" },
-  { href: "/batches", label: "Batches", icon: BatchesIcon, page: "batches" },
-  { href: "/history", label: "History", icon: HistoryIcon, page: "history" },
-  { href: "/settings", label: "Settings", icon: SettingsIcon, page: "settings" },
+const workspaceNavItems = [
+  { label: "Playground", icon: PlaygroundIcon, page: "playground" },
+  { label: "Batches", icon: BatchesIcon, page: "batches" },
+  { label: "History", icon: HistoryIcon, page: "history" },
 ];
 
-function getInitialSidebarCollapsedState() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const datasetValue = document.documentElement.dataset.sidebarCollapsed;
-  const storedValue = window.localStorage.getItem("dg-sidebar-collapsed");
-  return storedValue === null ? datasetValue === "true" : storedValue === "true";
+function buildPageHref(page) {
+  return page === "playground" ? "/" : `/?tab=${page}`;
 }
 
 export default function WorkspaceLayout({
@@ -54,15 +63,13 @@ export default function WorkspaceLayout({
   onNavClick,
 }) {
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(getInitialSidebarCollapsedState);
 
-  function toggleSidebar() {
-    setIsCollapsed((current) => {
-      const next = !current;
-      window.localStorage.setItem("dg-sidebar-collapsed", String(next));
-      document.documentElement.dataset.sidebarCollapsed = String(next);
-      return next;
-    });
+  function handleNavClick(page) {
+    if (onNavClick) {
+      onNavClick(page);
+    } else {
+      router.push(buildPageHref(page));
+    }
   }
 
   async function handleLogout() {
@@ -80,107 +87,116 @@ export default function WorkspaceLayout({
         />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
       </Head>
-      <div className={`${displayFont.variable} ${bodyFont.variable} app-shell`}>
-        <div className="app-frame">
-          <header className="topbar">
-            <div className="topbar-inner">
-              <div className="brand-lockup">
-                <div className="brand-mark">
-                  <LogoGlyph />
-                </div>
-                <div className="brand-copy">
-                  <h1>Eval AI</h1>
-                </div>
+      <SidebarProvider className={`${displayFont.variable} ${bodyFont.variable}`}>
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <div className="flex items-center gap-3 px-2 py-3">
+              <div className="grid size-9 shrink-0 place-items-center rounded-[12px] border border-sidebar-border bg-background/40 text-sidebar-foreground">
+                <LogoGlyph />
               </div>
-              <button
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className="sidebar-toggle"
-                onClick={toggleSidebar}
-                type="button"
-              >
-                <SidebarToggleIcon collapsed={isCollapsed} />
-              </button>
+              <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
+                  Eval AI
+                </p>
+                <p className="truncate text-xs text-sidebar-foreground/60">
+                  Fundraiser evals
+                </p>
+              </div>
             </div>
-          </header>
-          <div className={`workspace-shell ${isCollapsed ? "is-sidebar-collapsed" : ""}`}>
-            <aside className={`sidebar ${isCollapsed ? "is-collapsed" : ""}`}>
-              <div className="sidebar-inner">
-                <nav className="sidebar-nav" aria-label="Primary">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = currentPage === item.page;
-                    const className = `sidebar-link ${isActive ? "is-active" : ""}`;
-                    const content = (
-                      <>
-                        <span className="sidebar-link-icon">
-                          <Icon />
-                        </span>
-                        <span className="sidebar-link-text">{item.label}</span>
-                      </>
-                    );
+          </SidebarHeader>
 
-                    if (item.page === "settings" || !onNavClick) {
-                      return (
-                        <Link
-                          aria-current={isActive ? "page" : undefined}
-                          className={className}
-                          href={item.href}
-                          key={item.href}
-                        >
-                          {content}
-                        </Link>
-                      );
-                    }
-
-                    return (
-                      <button
-                        aria-current={isActive ? "page" : undefined}
-                        className={className}
-                        key={item.page}
-                        onClick={() => onNavClick(item.page)}
-                        type="button"
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarMenu>
+                {workspaceNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.page}>
+                      <SidebarMenuButton
+                        isActive={currentPage === item.page}
+                        onClick={() => handleNavClick(item.page)}
+                        size="lg"
+                        tooltip={item.label}
                       >
-                        {content}
-                      </button>
-                    );
-                  })}
-                </nav>
-
-                <section className="sidebar-summary">
-                  <div className="sidebar-summary-title">Workspace status</div>
-                  <div className="sidebar-meta">
-                    {stats.map((item) => (
-                      <div className="sidebar-stat" key={item.label}>
+                        <Icon />
                         <span>{item.label}</span>
-                        <strong>{item.value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
 
-                <div className="sidebar-footer">
-                  <button className="sidebar-link sidebar-utility" onClick={toggleTheme} type="button">
-                    <span className="sidebar-link-icon">
-                      <SunMoonIcon />
-                    </span>
-                    <span className="sidebar-link-text">
-                      {theme === "dark" ? "Light mode" : "Dark mode"}
-                    </span>
-                  </button>
-                  <button className="sidebar-link sidebar-utility" onClick={handleLogout} type="button">
-                    <span className="sidebar-link-icon">
-                      <LogoutIcon />
-                    </span>
-                    <span className="sidebar-link-text">Logout</span>
-                  </button>
+            <SidebarSeparator />
+
+            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="grid gap-2 px-1 py-1">
+                  {(stats || []).map((item) => (
+                    <div
+                      className="flex items-baseline justify-between gap-2"
+                      key={item.label}
+                    >
+                      <span className="text-[0.7rem] uppercase tracking-wide text-sidebar-foreground/60">
+                        {item.label}
+                      </span>
+                      <strong className="text-xs font-medium text-sidebar-foreground">
+                        {item.value}
+                      </strong>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </aside>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
 
-            <main className="content-panel">{children}</main>
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={toggleTheme}
+                  tooltip={theme === "dark" ? "Light mode" : "Dark mode"}
+                >
+                  <SunMoonIcon />
+                  <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={currentPage === "settings"}
+                  render={<Link href="/settings" />}
+                  tooltip="Settings"
+                >
+                  <SettingsIcon />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout} tooltip="Logout">
+                  <LogoutIcon />
+                  <span>Logout</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+
+          <SidebarRail />
+        </Sidebar>
+
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[color:var(--line)] px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator className="h-4" orientation="vertical" />
+            <span className="text-sm capitalize text-[color:var(--ink-muted)]">
+              {currentPage}
+            </span>
+          </header>
+          <div className="flex-1 overflow-y-auto p-6">
+            {children}
           </div>
-        </div>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
     </>
   );
 }

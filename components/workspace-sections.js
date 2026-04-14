@@ -1,5 +1,30 @@
 import { useEffect, useState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import DrawerShell from "@/components/drawer-shell";
 import { BadgeCheckIcon, BatchRunBoltIcon, BoltIcon, ShuffleIcon } from "@/components/icons";
 import LibraryDrawer from "@/components/library-drawer";
@@ -12,10 +37,7 @@ import {
   formatShortId,
   serializeRunRows,
 } from "@/lib/workspace";
-import {
-  DEFAULT_GENERATION_SETTINGS,
-  MODEL_OPTIONS,
-} from "@/lib/constants";
+import { DEFAULT_GENERATION_SETTINGS, MODEL_OPTIONS } from "@/lib/constants";
 import { parseCsv, toCsv } from "@/lib/csv";
 import {
   getOrganizationTypeOptions,
@@ -80,10 +102,13 @@ function clampIntegerInput(value) {
 }
 
 function sanitizeModelConfigurationIds(value) {
-  const runnableModelIds = MODEL_OPTIONS.filter((model) => !model.unavailable).map((model) => model.value);
+  const runnableModelIds = MODEL_OPTIONS.filter((model) => !model.unavailable).map(
+    (model) => model.value,
+  );
   const ids = Array.isArray(value) ? value : [];
   return ids.filter(
-    (id, index) => typeof id === "string" && runnableModelIds.includes(id) && ids.indexOf(id) === index,
+    (id, index) =>
+      typeof id === "string" && runnableModelIds.includes(id) && ids.indexOf(id) === index,
   );
 }
 
@@ -103,11 +128,112 @@ function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
   return "";
 }
 
+// ---------------------------------------------------------------------------
+// Local UI primitives
+// ---------------------------------------------------------------------------
+
+function Field({
+  helpText,
+  label,
+  onChange,
+  trailingAdornment = null,
+  type = "text",
+  value,
+  ...props
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <Label className="flex items-center gap-1.5">
+        <span>{label}</span>
+        {helpText ? <HelpTooltip text={helpText} /> : null}
+      </Label>
+      <div className="relative">
+        <Input
+          className={trailingAdornment ? "pr-8" : ""}
+          onChange={(event) => onChange(event.target.value)}
+          type={type}
+          value={value}
+          {...props}
+        />
+        {trailingAdornment ? (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">{trailingAdornment}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TextAreaField({ label, onChange, value }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label>{label}</Label>
+      <Textarea onChange={(event) => onChange(event.target.value)} value={value} />
+    </div>
+  );
+}
+
+function HelpTooltip({ text }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        aria-label="Show field help"
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] text-muted-foreground hover:bg-muted/80"
+        type="button"
+      >
+        ?
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[220px]">{text}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SectionCard({ children, className = "" }) {
+  return (
+    <Card className={`gap-0 ${className}`}>
+      <CardContent className="grid gap-5 p-5">{children}</CardContent>
+    </Card>
+  );
+}
+
+function SectionHead({ title, subtitle = null, action = null }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function SubSection({ title, children }) {
+  return (
+    <div className="grid gap-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h4>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ children }) {
+  return (
+    <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PlaygroundSection
+// ---------------------------------------------------------------------------
+
 export function PlaygroundSection(workspace) {
   const {
     availableModelOptions,
     causeTagOptions,
     caseDraft,
+    enabledModelIds,
     generationSettings,
     handleGenerate,
     handleRandomizeCauseTags,
@@ -206,228 +332,246 @@ export function PlaygroundSection(workspace) {
         title="Playground"
       />
 
-      <div className="two-column">
-        <section className="panel-block">
-          <div className="utility-row section-head playground-section-head">
-            <div>
-              <h3>Data Variables</h3>
-              <div className="field-help">
-                {sourcePoolStats.total
-                  ? `${sourcePoolStats.total} source rows loaded · ${sourcePoolStats.verified} verified`
-                  : "Upload a source CSV in Batches to enable randomization."}
-              </div>
-            </div>
-            <button
-              className="secondary-button"
-              disabled={!sourcePoolStats.total || playgroundRandomizing}
-              onClick={handleRandomizeCaseFromSourcePool}
-              type="button"
-            >
-              <ShuffleIcon />
-              {playgroundRandomizing ? "Randomizing…" : "Randomize"}
-            </button>
-          </div>
-          <div className="field-grid">
-            <div className="subsection-stack">
-              <section className="subsection-block">
-                <h4>Event Names</h4>
-                <div className="field-grid">
-                  <Field
-                    label="Organization name"
-                    onChange={(value) =>
-                      setCaseDraft((current) => ({ ...current, organizationName: value }))
-                    }
-                    trailingAdornment={
-                      caseDraft.sourceType === "source_pool" && caseDraft.isVerified ? (
-                        <span className="input-adornment input-adornment-verified">
-                          <BadgeCheckIcon />
-                        </span>
-                      ) : null
-                    }
-                    value={caseDraft.organizationName}
-                  />
-                  <Field
-                    label="Team name"
-                    onChange={(value) => setCaseDraft((current) => ({ ...current, teamName: value }))}
-                    value={caseDraft.teamName}
-                  />
-                </div>
-              </section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Data Variables */}
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button
+                disabled={!sourcePoolStats.total || playgroundRandomizing}
+                onClick={handleRandomizeCaseFromSourcePool}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ShuffleIcon />
+                {playgroundRandomizing ? "Randomizing…" : "Randomize"}
+              </Button>
+            }
+            subtitle={
+              sourcePoolStats.total
+                ? `${sourcePoolStats.total} source rows loaded · ${sourcePoolStats.verified} verified`
+                : "Upload a source CSV in Batches to enable randomization."
+            }
+            title="Data Variables"
+          />
 
-              <section className="subsection-block">
-                <h4>Taxonomy Info</h4>
-                <div className="field-grid">
-                  <div className="field-group">
-                    <label htmlFor="organization-type">Organization Type</label>
-                    <select
-                      id="organization-type"
-                      onChange={(event) =>
+          <div className="grid gap-4">
+            <SubSection title="Event Names">
+              <div className="grid gap-3">
+                <Field
+                  label="Organization name"
+                  onChange={(value) =>
+                    setCaseDraft((current) => ({ ...current, organizationName: value }))
+                  }
+                  trailingAdornment={
+                    caseDraft.sourceType === "source_pool" && caseDraft.isVerified ? (
+                      <span className="text-emerald-500">
+                        <BadgeCheckIcon />
+                      </span>
+                    ) : null
+                  }
+                  value={caseDraft.organizationName}
+                />
+                <Field
+                  label="Team name"
+                  onChange={(value) =>
+                    setCaseDraft((current) => ({ ...current, teamName: value }))
+                  }
+                  value={caseDraft.teamName}
+                />
+              </div>
+            </SubSection>
+
+            <SubSection title="Taxonomy Info">
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="organization-type">Organization Type</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setCaseDraft((current) => ({
+                        ...current,
+                        ...normalizeTaxonomySelection({
+                          ...current,
+                          organizationType: value,
+                          teamActivity: "",
+                          teamAffiliation: "",
+                        }),
+                      }))
+                    }
+                    value={caseDraft.organizationType}
+                  >
+                    <SelectTrigger className="w-full" id="organization-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizationTypeOptions.map((organizationType) => (
+                        <SelectItem key={organizationType} value={organizationType}>
+                          {organizationType}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {teamActivityConfig.mode === "select" ? (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="team-activity">Team Activity</Label>
+                    <Select
+                      onValueChange={(value) =>
                         setCaseDraft((current) => ({
                           ...current,
                           ...normalizeTaxonomySelection({
                             ...current,
-                            organizationType: event.target.value,
-                            teamActivity: "",
+                            teamActivity: value,
                             teamAffiliation: "",
                           }),
                         }))
                       }
-                      value={caseDraft.organizationType}
-                    >
-                      {organizationTypeOptions.map((organizationType) => (
-                        <option key={organizationType} value={organizationType}>
-                          {organizationType}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {teamActivityConfig.mode === "select" ? (
-                    <div className="field-group">
-                      <label htmlFor="team-activity">Team Activity</label>
-                      <select
-                        id="team-activity"
-                        onChange={(event) =>
-                          setCaseDraft((current) => ({
-                            ...current,
-                            ...normalizeTaxonomySelection({
-                              ...current,
-                              teamActivity: event.target.value,
-                              teamAffiliation: "",
-                            }),
-                          }))
-                        }
-                        value={caseDraft.teamActivity}
-                      >
-                        {teamActivityConfig.options.map((teamActivity) => (
-                          <option key={teamActivity} value={teamActivity}>
-                            {teamActivity}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <Field
-                      label="Team Activity"
-                      onChange={(value) => setCaseDraft((current) => ({ ...current, teamActivity: value }))}
                       value={caseDraft.teamActivity}
-                    />
-                  )}
-
-                  {teamAffiliationConfig.mode === "select" ? (
-                    <div className="field-group">
-                      <label htmlFor="team-affiliation">Team Affiliation</label>
-                      <select
-                        id="team-affiliation"
-                        onChange={(event) =>
-                          setCaseDraft((current) => ({
-                            ...current,
-                            teamAffiliation:
-                              event.target.value === "Other" ? "Other" : event.target.value,
-                          }))
-                        }
-                        value={affiliationSelectValue}
-                      >
-                        <option value="" disabled>
-                          Select affiliation
-                        </option>
-                        {teamAffiliationConfig.options.map((teamAffiliation) => (
-                          <option key={teamAffiliation} value={teamAffiliation}>
-                            {teamAffiliation}
-                          </option>
+                    >
+                      <SelectTrigger className="w-full" id="team-activity">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamActivityConfig.options.map((teamActivity) => (
+                          <SelectItem key={teamActivity} value={teamActivity}>
+                            {teamActivity}
+                          </SelectItem>
                         ))}
-                      </select>
-                      <div className="field-help">
-                        Options are filtered from the taxonomy CSV for the selected organization type and activity.
-                      </div>
-                    </div>
-                  ) : (
-                    <Field
-                      label="Team Affiliation"
-                      onChange={(value) =>
-                        setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
-                      }
-                      value={caseDraft.teamAffiliation}
-                    />
-                  )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <Field
+                    label="Team Activity"
+                    onChange={(value) =>
+                      setCaseDraft((current) => ({ ...current, teamActivity: value }))
+                    }
+                    value={caseDraft.teamActivity}
+                  />
+                )}
 
-                  {teamAffiliationConfig.mode === "select" && affiliationSelectValue === "Other" ? (
-                    <Field
-                      label="Other Team Affiliation"
-                      onChange={(value) =>
-                        setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
+                {teamAffiliationConfig.mode === "select" ? (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="team-affiliation">Team Affiliation</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setCaseDraft((current) => ({
+                          ...current,
+                          teamAffiliation: value === "Other" ? "Other" : value,
+                        }))
                       }
-                      value={caseDraft.teamAffiliation === "Other" ? "" : caseDraft.teamAffiliation}
-                    />
-                  ) : null}
-                </div>
-              </section>
+                      value={affiliationSelectValue}
+                    >
+                      <SelectTrigger className="w-full" id="team-affiliation">
+                        <SelectValue placeholder="Select affiliation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamAffiliationConfig.options.map((teamAffiliation) => (
+                          <SelectItem key={teamAffiliation} value={teamAffiliation}>
+                            {teamAffiliation}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Options are filtered from the taxonomy CSV for the selected organization
+                      type and activity.
+                    </p>
+                  </div>
+                ) : (
+                  <Field
+                    label="Team Affiliation"
+                    onChange={(value) =>
+                      setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
+                    }
+                    value={caseDraft.teamAffiliation}
+                  />
+                )}
 
-              <section className="subsection-block">
-                <div className="utility-row">
-                  <h4>Cause Tags</h4>
-                  <button
+                {teamAffiliationConfig.mode === "select" && affiliationSelectValue === "Other" ? (
+                  <Field
+                    label="Other Team Affiliation"
+                    onChange={(value) =>
+                      setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
+                    }
+                    value={caseDraft.teamAffiliation === "Other" ? "" : caseDraft.teamAffiliation}
+                  />
+                ) : null}
+              </div>
+            </SubSection>
+
+            <SubSection title="Cause Tags">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="sr-only">Cause tags</span>
+                  <Button
                     aria-label="Randomize cause tags"
-                    className="icon-button"
                     onClick={handleRandomizeCauseTags}
+                    size="icon-sm"
                     type="button"
+                    variant="ghost"
                   >
                     <ShuffleIcon />
-                  </button>
+                  </Button>
                 </div>
-                <div className="field-group">
-                  <div className="chip-grid">
-                    {causeTagOptions.map((tag) => {
-                      const selected = caseDraft.causeTags.includes(tag);
-                      return (
-                        <button
-                          className={`chip-button ${selected ? "is-selected" : ""}`}
-                          key={tag}
-                          onClick={() => handleCauseTagToggle(tag)}
-                          type="button"
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className={`field-help ${causeTagError ? "field-help-error" : ""}`}>
-                    {causeTagError || "Up to 3 tags in the prompt payload."}
-                  </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {causeTagOptions.map((tag) => {
+                    const selected = caseDraft.causeTags.includes(tag);
+                    return (
+                      <Button
+                        key={tag}
+                        onClick={() => handleCauseTagToggle(tag)}
+                        size="xs"
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                      >
+                        {tag}
+                      </Button>
+                    );
+                  })}
                 </div>
-              </section>
-            </div>
+                <p className={`mt-1.5 text-xs ${causeTagError ? "text-destructive" : "text-muted-foreground"}`}>
+                  {causeTagError || "Up to 3 tags in the prompt payload."}
+                </p>
+              </div>
+            </SubSection>
           </div>
-          <div className="button-row section-actions playground-footer-actions">
-            <button
-              className="secondary-button"
+
+          <div className="flex items-center gap-2 border-t pt-4">
+            <Button
               disabled={!canSaveCase}
               onClick={() => handleSaveCase(normalizeTestCase(caseDraft))}
+              size="sm"
               type="button"
+              variant="outline"
             >
               Save case
-            </button>
-            <button
-              className="tertiary-button"
+            </Button>
+            <Button
               onClick={() => setIsCaseLibraryOpen(true)}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               View all cases
-            </button>
+            </Button>
           </div>
-        </section>
+        </SectionCard>
 
-        <section className="panel-block">
-          <h3 className="playground-section-title">Prompt</h3>
-          <div className="subsection-stack">
-            <section className="subsection-block">
-              <div className="utility-row section-head">
-                <h4>Prompt</h4> 
-                </div>
-              <div className="field-grid">
+        {/* Prompt */}
+        <SectionCard>
+          <SectionHead title="Prompt" />
+
+          <div className="grid gap-4">
+            <SubSection title="Template">
+              <div className="grid gap-3">
                 <Field
                   label="Label"
-                  onChange={(value) => setPromptDraft((current) => ({ ...current, name: value }))}
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, name: value }))
+                  }
                   value={promptDraft.name}
                 />
                 <TextAreaField
@@ -452,34 +596,39 @@ export function PlaygroundSection(workspace) {
                   value={promptDraft.messageLengthInstruction}
                 />
               </div>
-            </section>
+            </SubSection>
 
-            <section className="subsection-block">
-              <h4>Message Parts</h4>
-              <div className="field-grid">
+            <SubSection title="Message Parts">
+              <div className="grid gap-3">
                 <TextAreaField
                   label="Prefix"
-                  onChange={(value) => setPromptDraft((current) => ({ ...current, prefixText: value }))}
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, prefixText: value }))
+                  }
                   value={promptDraft.prefixText}
                 />
                 <TextAreaField
                   label="Suffix"
-                  onChange={(value) => setPromptDraft((current) => ({ ...current, suffixText: value }))}
+                  onChange={(value) =>
+                    setPromptDraft((current) => ({ ...current, suffixText: value }))
+                  }
                   value={promptDraft.suffixText}
                 />
               </div>
-            </section>
+            </SubSection>
 
-            <section className="subsection-block">
-              <div className="subsection-toggle-row">
-                <div>
-                  <h4>Model Parameters</h4>
-                  <div className="field-help">Enable shared generation parameters for this run.</div>
-                </div>
-                <ToggleField checked={isSharedModelParamsEnabled} onChange={handleSharedModelParamsToggle} />
+            <SubSection title="Model Parameters">
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Enable shared generation parameters for this run.
+                </p>
+                <Switch
+                  checked={isSharedModelParamsEnabled}
+                  onCheckedChange={handleSharedModelParamsToggle}
+                />
               </div>
               {isSharedModelParamsEnabled ? (
-                <div className="inline-grid">
+                <div className="grid grid-cols-2 gap-3">
                   <Field
                     helpText={HELP_TEXT.temperature}
                     label="Temperature"
@@ -520,8 +669,8 @@ export function PlaygroundSection(workspace) {
                   />
                   <Field
                     helpText={HELP_TEXT.seed}
-                    label="Seed"
                     inputMode="numeric"
+                    label="Seed"
                     onChange={(value) =>
                       setGenerationSettings((current) => ({
                         ...current,
@@ -532,220 +681,251 @@ export function PlaygroundSection(workspace) {
                   />
                 </div>
               ) : null}
-            </section>
+            </SubSection>
           </div>
-          <div className="button-row section-actions playground-footer-actions">
-            <button
-              className="secondary-button"
+
+          <div className="flex items-center gap-2 border-t pt-4">
+            <Button
               disabled={!canSavePrompt}
               onClick={handleSavePrompt}
+              size="sm"
               type="button"
+              variant="outline"
             >
               Save Prompt
-            </button>
-            <button
-              className="tertiary-button"
+            </Button>
+            <Button
               onClick={() => setIsPromptLibraryOpen(true)}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               View all Prompts
-            </button>
+            </Button>
           </div>
-        </section>
+        </SectionCard>
       </div>
 
-      <section className="panel-block page-section">
-        <div className="variant-row section-head playground-section-head">
-          <div>
-            <h3>Model Selection</h3>
-            <div className="field-help">
-              {playgroundMode === "compare"
-                ? "Comparison is active. Each variant is generated side by side for the same fundraiser input."
-                : "Single mode is active. Add another variant to enable side-by-side comparison."}
-            </div>
-          </div>
-          <button
-            className="secondary-button"
-            onClick={() =>
-              setVariants((current) => [
-                ...current,
-                {
-                  ...createInitialVariant(workspace.enabledModelIds),
-                  label: `Variant ${current.length + 1}`,
-                },
-              ])
-            }
-            type="button"
-          >
-            Add variant
-          </button>
-        </div>
+      {/* Model Selection */}
+      <SectionCard className="mt-6">
+        <SectionHead
+          action={
+            <Button
+              onClick={() =>
+                setVariants((current) => [
+                  ...current,
+                  {
+                    ...createInitialVariant(enabledModelIds),
+                    label: `Variant ${current.length + 1}`,
+                  },
+                ])
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Add variant
+            </Button>
+          }
+          subtitle={
+            playgroundMode === "compare"
+              ? "Comparison is active. Each variant is generated side by side for the same fundraiser input."
+              : "Single mode is active. Add another variant to enable side-by-side comparison."
+          }
+          title="Model Selection"
+        />
 
-        <div className="variant-list">
+        <div className="grid gap-4">
           {variants.map((variant, index) => (
-            <div className="variant-card" key={variant.id}>
-              <div className="variant-row">
-                <div>
-                  <h4 className="variant-title">{variant.label}</h4>
-                  {/* <div className="field-help">Choose the label, prompt source, and model. Overrides are optional.</div> */}
+            <Card className="gap-0" key={variant.id}>
+              <CardContent className="grid gap-4 p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {variant.label}
+                  </h4>
                 </div>
-              </div>
-              <div className="variant-primary-grid">
-                <Field
-                  label="Label"
-                  onChange={(value) => updateVariant(variant.id, { label: value })}
-                  value={variant.label}
-                />
-                <div className="field-group">
-                  <label className="field-label" htmlFor={`${variant.id}-prompt-source`}>
-                    <span>Prompt Source</span>
-                  </label>
-                  <select
-                    id={`${variant.id}-prompt-source`}
-                    onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
-                    value={variant.promptSource}
-                  >
-                    <option value="current">Current draft</option>
-                    {promptTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label className="field-label" htmlFor={`${variant.id}-model`}>
-                    <span>Model</span>
-                    <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
-                  </label>
-                  <select
-                    id={`${variant.id}-model`}
-                    onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
-                    value={variant.model}
-                  >
-                    {availableModelOptions.map((model) => (
-                      <option disabled={model.unavailable} key={model.value} value={model.value}>
-                        {formatModelOption(model)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
-              <div className="subsection-block variant-overrides-block">
-                <div className="subsection-toggle-stack">
-                  <div className="subsection-toggle-row">
-                    <h4>Override Model Parameters</h4>
-                    <ToggleField
+                <div className="grid grid-cols-3 gap-3">
+                  <Field
+                    label="Label"
+                    onChange={(value) => updateVariant(variant.id, { label: value })}
+                    value={variant.label}
+                  />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`${variant.id}-prompt-source`}>Prompt Source</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        updateVariant(variant.id, { promptSource: value })
+                      }
+                      value={variant.promptSource}
+                    >
+                      <SelectTrigger className="w-full" id={`${variant.id}-prompt-source`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="current">Current draft</SelectItem>
+                        {promptTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="flex items-center gap-1.5" htmlFor={`${variant.id}-model`}>
+                      <span>Model</span>
+                      <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
+                    </Label>
+                    <Select
+                      onValueChange={(value) => updateVariant(variant.id, { model: value })}
+                      value={variant.model}
+                    >
+                      <SelectTrigger className="w-full" id={`${variant.id}-model`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableModelOptions.map((model) => (
+                          <SelectItem
+                            disabled={model.unavailable}
+                            key={model.value}
+                            value={model.value}
+                          >
+                            {formatModelOption(model)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Override Model Parameters
+                      </h4>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Show and apply per-variant generation overrides.
+                      </p>
+                    </div>
+                    <Switch
                       checked={Boolean(variant.useOverrides)}
-                      onChange={(enabled) => handleVariantOverrideToggle(variant.id, enabled)}
+                      onCheckedChange={(enabled) =>
+                        handleVariantOverrideToggle(variant.id, enabled)
+                      }
                     />
                   </div>
-                  <div className="field-help">Show and apply per-variant generation overrides.</div>
+                  {variant.useOverrides ? (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <Field
+                        helpText={HELP_TEXT.temperature}
+                        label="Temperature Override"
+                        max="1"
+                        min="0"
+                        onChange={(value) =>
+                          updateVariant(variant.id, {
+                            temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                          })
+                        }
+                        step="0.01"
+                        type="number"
+                        value={variant.temperature}
+                      />
+                      <Field
+                        label="Max Tokens Override"
+                        onChange={(value) => updateVariant(variant.id, { maxTokens: value })}
+                        type="number"
+                        value={variant.maxTokens}
+                      />
+                      <Field
+                        helpText={HELP_TEXT.topP}
+                        label="Top P Override"
+                        max="1"
+                        min="0"
+                        onChange={(value) =>
+                          updateVariant(variant.id, {
+                            topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                          })
+                        }
+                        step="0.01"
+                        type="number"
+                        value={variant.topP}
+                      />
+                      <Field
+                        helpText={HELP_TEXT.seed}
+                        inputMode="numeric"
+                        label="Seed Override"
+                        onChange={(value) =>
+                          updateVariant(variant.id, { seed: clampIntegerInput(value) })
+                        }
+                        value={variant.seed}
+                      />
+                    </div>
+                  ) : null}
                 </div>
-                {variant.useOverrides ? (
-                  <div className="inline-grid">
-                    <Field
-                      label="Temperature Override"
-                      helpText={HELP_TEXT.temperature}
-                      max="1"
-                      min="0"
-                      onChange={(value) =>
-                        updateVariant(variant.id, {
-                          temperature: clampDecimalInput(value, { min: 0, max: 1 }),
-                        })
+
+                {index > 0 ? (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() =>
+                        setVariants((current) =>
+                          current.filter((item) => item.id !== variant.id),
+                        )
                       }
-                      step="0.01"
-                      type="number"
-                      value={variant.temperature}
-                    />
-                    <Field
-                      label="Max Tokens Override"
-                      onChange={(value) => updateVariant(variant.id, { maxTokens: value })}
-                      type="number"
-                      value={variant.maxTokens}
-                    />
-                    <Field
-                      label="Top P Override"
-                      helpText={HELP_TEXT.topP}
-                      max="1"
-                      min="0"
-                      onChange={(value) =>
-                        updateVariant(variant.id, {
-                          topP: clampDecimalInput(value, { min: 0, max: 1 }),
-                        })
-                      }
-                      step="0.01"
-                      type="number"
-                      value={variant.topP}
-                    />
-                    <Field
-                      label="Seed Override"
-                      helpText={HELP_TEXT.seed}
-                      inputMode="numeric"
-                      onChange={(value) => updateVariant(variant.id, { seed: clampIntegerInput(value) })}
-                      value={variant.seed}
-                    />
+                      size="sm"
+                      type="button"
+                      variant="destructive"
+                    >
+                      Remove
+                    </Button>
                   </div>
                 ) : null}
-              </div>
-              {index > 0 ? (
-                <div className="variant-card-actions">
-                  <button
-                    className="danger-button"
-                    onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))}
-                    type="button"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : null}
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        <div className="button-row section-actions">
-            <button
-              className="primary-button run-action-button"
-              disabled={playgroundGenerating}
-              onClick={() => {
-                setDismissedResultKey("");
-                handleGenerate();
-              }}
-              type="button"
-            >
-            <BoltIcon />
-            {playgroundGenerating ? "Running…" : "Run"}
-          </button>
-          <button
-            className="tertiary-button"
+        <div className="flex items-center gap-2 border-t pt-4">
+          <Button
             disabled={playgroundGenerating}
-            onClick={() => downloadCsv("test-cases.csv", toCsv(testCases))}
+            onClick={() => {
+              setDismissedResultKey("");
+              handleGenerate();
+            }}
             type="button"
           >
+            <BoltIcon />
+            {playgroundGenerating ? "Running…" : "Run"}
+          </Button>
+          <Button
+            disabled={playgroundGenerating}
+            onClick={() => downloadCsv("test-cases.csv", toCsv(testCases))}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
             Export saved cases
-          </button>
+          </Button>
         </div>
-
-      </section>
+      </SectionCard>
 
       {isResultDrawerOpen ? (
         <DrawerShell
-          ariaLabel="Close latest result panel"
           helperText="Showing the current playground response only. It is not saved to history."
           onClose={() => setDismissedResultKey(latestResultKey)}
           title="Latest Result"
         >
           {playgroundGenerating ? (
-            <div className="empty-state">Generating results…</div>
+            <EmptyState>Generating results…</EmptyState>
           ) : playgroundRun ? (
-            <div className="playground-result-stack">
+            <div className="grid gap-4">
               {(playgroundRun.results || []).map((result) => (
                 <ResultCard key={result.id} result={result} showRating={false} />
               ))}
             </div>
           ) : (
-            <div className="empty-state">Run to open the latest result here.</div>
+            <EmptyState>Run to open the latest result here.</EmptyState>
           )}
         </DrawerShell>
       ) : null}
@@ -785,6 +965,10 @@ export function PlaygroundSection(workspace) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// BatchSection
+// ---------------------------------------------------------------------------
+
 export function BatchSection(workspace) {
   const {
     availableModelOptions,
@@ -802,6 +986,7 @@ export function BatchSection(workspace) {
     setBatchSelection,
     setImportedCases,
     setVariants,
+    shapeImportedCase,
     sourcePoolStats,
     testCases,
     updateVariant,
@@ -812,315 +997,372 @@ export function BatchSection(workspace) {
     <>
       <WorkspacePageHeader
         actions={
-          <div className="button-row">
-            <button
-              className="primary-button run-action-button"
-              disabled={batchGenerating || !promptTemplates.length}
-              onClick={() => handleBatchRun()}
-              type="button"
-            >
-              <BatchRunBoltIcon />
-              {batchGenerating ? "Running…" : "Run Batch"}
-            </button>
-          </div>
+          <Button
+            disabled={batchGenerating || !promptTemplates.length}
+            onClick={() => handleBatchRun()}
+            type="button"
+          >
+            <BatchRunBoltIcon />
+            {batchGenerating ? "Running…" : "Run Batch"}
+          </Button>
         }
         description="Run the same prompt stack across multiple saved or imported cases."
         title="Batches"
       />
 
-      <div className="batch-section-stack">
-      <section className="panel-block">
-        <div className="utility-row section-head">
-          <h3>Playground saved cases</h3>
-          <button
-            className="primary-button run-action-button"
-            disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
-            onClick={() =>
-              handleBatchRun({
-                includeSavedCases: true,
-                includeImportedCases: false,
-                includeSourcePool: false,
-              })
-            }
-            type="button"
-          >
-            <BoltIcon />
-            {batchGenerating ? "Running…" : "Run"}
-          </button>
-        </div>
-          {testCases.length ? (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Use</th>
-                    <th>Team Name</th>
-                    <th>Org Name</th>
-                    <th>Verified</th>
-                    <th>Affiliation</th>
-                    <th>Causes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {testCases.map((testCase) => (
-                    <tr key={testCase.id}>
-                      <td>
-                        <input
-                          checked={batchSelection.includes(testCase.id)}
-                          onChange={(event) =>
-                            setBatchSelection((current) =>
-                              event.target.checked
-                                ? [...current, testCase.id]
-                                : current.filter((id) => id !== testCase.id),
-                            )
-                          }
-                          type="checkbox"
-                        />
-                      </td>
-                      <td>{testCase.teamName}</td>
-                      <td>{testCase.organizationName}</td>
-                      <td>{testCase.isVerified ? <BadgeCheckIcon /> : null}</td>
-                      <td>{testCase.teamAffiliation}</td>
-                      <td>{testCase.causeTags.join(", ")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="empty-state">No saved cases yet.</div>
-          )}
-      </section>
-
-      <div className="two-column">
-        <section className="panel-block">
-          <div className="utility-row section-head">
-            <h3>CSV import</h3>
-          <button
-              className="primary-button run-action-button"
-              disabled={batchGenerating || !promptTemplates.length || !importedCases.length}
-              onClick={() =>
-                handleBatchRun({
-                  includeSavedCases: false,
-                  includeImportedCases: true,
-                  includeSourcePool: false,
-                })
-              }
-              type="button"
-            >
-              <BoltIcon />
-              {batchGenerating ? "Running…" : "Run"}
-            </button>
-          </div>
-          <div className="field-help" style={{ marginBottom: 12 }}>
-            Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
-            TEAM_ACTIVITY, TEAM_AFFILIATION.
-          </div>
-          <div className="field-group">
-            <h4>Upload CSV</h4>
-            <input
-              accept=".csv,text/csv"
-              id="csv-import"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) {
-                  return;
+      <div className="grid gap-6">
+        {/* Saved cases */}
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button
+                disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
+                onClick={() =>
+                  handleBatchRun({
+                    includeSavedCases: true,
+                    includeImportedCases: false,
+                    includeSourcePool: false,
+                  })
                 }
-                const text = await file.text();
-                const parsed = parseCsv(text).map(workspace.shapeImportedCase);
-                setImportedCases(parsed);
-              }}
-              type="file"
-            />
-          </div>
-          {importedCases.length ? (
-            <>
-              <div className="callout section-note">{importedCases.length} imported cases are staged.</div>
-              <div className="button-row section-actions">
-                <button className="secondary-button" onClick={handleSaveImportedCases} type="button">
-                  Save imported cases
-                </button>
-                <button
-                  className="tertiary-button"
-                  onClick={() => downloadCsv("imported-cases.csv", toCsv(importedCases))}
+                size="sm"
+                type="button"
+              >
+                <BoltIcon />
+                {batchGenerating ? "Running…" : "Run"}
+              </Button>
+            }
+            title="Playground saved cases"
+          />
+          {testCases.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Use</TableHead>
+                  <TableHead>Team Name</TableHead>
+                  <TableHead>Org Name</TableHead>
+                  <TableHead>Verified</TableHead>
+                  <TableHead>Affiliation</TableHead>
+                  <TableHead>Causes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {testCases.map((testCase) => (
+                  <TableRow key={testCase.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={batchSelection.includes(testCase.id)}
+                        onCheckedChange={(checked) =>
+                          setBatchSelection((current) =>
+                            checked
+                              ? [...current, testCase.id]
+                              : current.filter((id) => id !== testCase.id),
+                          )
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>{testCase.teamName}</TableCell>
+                    <TableCell>{testCase.organizationName}</TableCell>
+                    <TableCell>
+                      {testCase.isVerified ? <BadgeCheckIcon /> : null}
+                    </TableCell>
+                    <TableCell>{testCase.teamAffiliation}</TableCell>
+                    <TableCell>{testCase.causeTags.join(", ")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <EmptyState>No saved cases yet.</EmptyState>
+          )}
+        </SectionCard>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* CSV Import */}
+          <SectionCard>
+            <SectionHead
+              action={
+                <Button
+                  disabled={
+                    batchGenerating || !promptTemplates.length || !importedCases.length
+                  }
+                  onClick={() =>
+                    handleBatchRun({
+                      includeSavedCases: false,
+                      includeImportedCases: true,
+                      includeSourcePool: false,
+                    })
+                  }
+                  size="sm"
                   type="button"
                 >
-                  Export staged rows
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="empty-state section-note">Import a CSV to stage additional batch cases.</div>
-          )}
-        </section>
-
-        <section className="panel-block">
-          <div className="utility-row section-head batch-source-head">
-            <div>
-              <h3>Source Pool</h3>
-              <div className="field-help">
-                Dedicated randomization dataset. Current pool: {sourcePoolStats.total} rows,{" "}
-                {sourcePoolStats.verified} verified, {sourcePoolStats.unverified} unverified.
-              </div>
-            </div>
-            <button
-              className="primary-button run-action-button"
-              disabled={batchGenerating || !promptTemplates.length || (Number(batchSampleCount) || 0) <= 0}
-              onClick={() =>
-                handleBatchRun({
-                  includeSavedCases: false,
-                  includeImportedCases: false,
-                  includeSourcePool: true,
-                })
+                  <BoltIcon />
+                  {batchGenerating ? "Running…" : "Run"}
+                </Button>
               }
-              type="button"
-            >
-              <BoltIcon />
-              {batchGenerating ? "Running…" : "Run"}
-            </button>
-          </div>
-          <section className="subsection-block">
-            <h4>Batch Sampling</h4>
-            <div className="inline-grid">
-              <Field
-                label="Random sample count"
-                onChange={setBatchSampleCount}
-                type="number"
-                value={batchSampleCount}
+              title="CSV import"
+            />
+            <p className="text-xs text-muted-foreground">
+              Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID,
+              ORGANIZATION_TYPE, TEAM_ACTIVITY, TEAM_AFFILIATION.
+            </p>
+            <div className="grid gap-1.5">
+              <Label htmlFor="csv-import">Upload CSV</Label>
+              <Input
+                accept=".csv,text/csv"
+                id="csv-import"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+                  const text = await file.text();
+                  const parsed = parseCsv(text).map(shapeImportedCase);
+                  setImportedCases(parsed);
+                }}
+                type="file"
               />
-              <div className="field-group">
-                <label className="field-label" htmlFor="batch-verification-filter">
-                  <span>Verification Filter</span>
-                </label>
-                <select
-                  id="batch-verification-filter"
-                  onChange={(event) => setBatchVerificationFilter(event.target.value)}
-                  value={batchVerificationFilter}
-                >
-                  <option value="any">Any</option>
-                  <option value="verified">Verified only</option>
-                  <option value="unverified">Unverified only</option>
-                </select>
-              </div>
             </div>
-            <div className="field-help">
-              Source-pool batch rows get 1-3 random cause tags automatically and are used only for that run.
-            </div>
-          </section>
-        </section>
-      </div>
-
-      <section className="panel-block page-section">
-        <div className="variant-row section-head">
-          <div>
-            <h3>Batch run configuration</h3>
-            <div className="field-help">
-              Choose the saved prompt and model for each batch variant. Prompts must be saved in Playground first.
-            </div>
-          </div>
-          <button
-            className="secondary-button"
-            disabled={!promptTemplates.length}
-            onClick={() =>
-              setVariants((current) => [
-                ...current,
-                {
-                  ...createInitialVariant(enabledModelIds),
-                  label: `Variant ${current.length + 1}`,
-                  promptSource: promptTemplates[0]?.id || "current",
-                },
-              ])
-            }
-            type="button"
-          >
-            Add variant
-          </button>
-        </div>
-
-        {!promptTemplates.length ? (
-          <div className="callout error-callout section-note">
-            Save at least one prompt in Playground before running a batch.
-          </div>
-        ) : null}
-
-        <div className="variant-list">
-          {variants.map((variant, index) => (
-            <div className="variant-card" key={variant.id}>
-              <div className="variant-row">
-                <div>
-                  <h4 className="variant-title">{variant.label}</h4>
-                </div>
-              </div>
-              <div className="variant-primary-grid">
-                <Field
-                  label="Label"
-                  onChange={(value) => updateVariant(variant.id, { label: value })}
-                  value={variant.label}
-                />
-                <div className="field-group">
-                  <label className="field-label" htmlFor={`${variant.id}-batch-prompt-source`}>
-                    <span>Saved Prompt</span>
-                  </label>
-                  <select
-                    id={`${variant.id}-batch-prompt-source`}
-                    onChange={(event) => updateVariant(variant.id, { promptSource: event.target.value })}
-                    value={variant.promptSource}
-                  >
-                    {promptTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label className="field-label" htmlFor={`${variant.id}-batch-model`}>
-                    <span>Model</span>
-                    <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
-                  </label>
-                  <select
-                    id={`${variant.id}-batch-model`}
-                    onChange={(event) => updateVariant(variant.id, { model: event.target.value })}
-                    value={variant.model}
-                  >
-                    {availableModelOptions.map((model) => (
-                      <option disabled={model.unavailable} key={model.value} value={model.value}>
-                        {formatModelOption(model)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {index > 0 ? (
-                <div className="variant-card-actions">
-                  <button
-                    className="danger-button"
-                    onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))}
+            {importedCases.length ? (
+              <>
+                <Alert>
+                  <AlertDescription>
+                    {importedCases.length} imported cases are staged.
+                  </AlertDescription>
+                </Alert>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleSaveImportedCases}
+                    size="sm"
                     type="button"
+                    variant="outline"
                   >
-                    Remove
-                  </button>
+                    Save imported cases
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      downloadCsv("imported-cases.csv", toCsv(importedCases))
+                    }
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Export staged rows
+                  </Button>
                 </div>
-              ) : null}
-            </div>
-          ))}
+              </>
+            ) : (
+              <EmptyState>Import a CSV to stage additional batch cases.</EmptyState>
+            )}
+          </SectionCard>
+
+          {/* Source Pool */}
+          <SectionCard>
+            <SectionHead
+              action={
+                <Button
+                  disabled={
+                    batchGenerating ||
+                    !promptTemplates.length ||
+                    (Number(batchSampleCount) || 0) <= 0
+                  }
+                  onClick={() =>
+                    handleBatchRun({
+                      includeSavedCases: false,
+                      includeImportedCases: false,
+                      includeSourcePool: true,
+                    })
+                  }
+                  size="sm"
+                  type="button"
+                >
+                  <BoltIcon />
+                  {batchGenerating ? "Running…" : "Run"}
+                </Button>
+              }
+              subtitle={`Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`}
+              title="Source Pool"
+            />
+
+            <SubSection title="Batch Sampling">
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label="Random sample count"
+                  onChange={setBatchSampleCount}
+                  type="number"
+                  value={batchSampleCount}
+                />
+                <div className="grid gap-1.5">
+                  <Label htmlFor="batch-verification-filter">Verification Filter</Label>
+                  <Select
+                    onValueChange={setBatchVerificationFilter}
+                    value={batchVerificationFilter}
+                  >
+                    <SelectTrigger className="w-full" id="batch-verification-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="verified">Verified only</SelectItem>
+                      <SelectItem value="unverified">Unverified only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Source-pool batch rows get 1-3 random cause tags automatically and are used
+                only for that run.
+              </p>
+            </SubSection>
+          </SectionCard>
         </div>
-      </section>
+
+        {/* Batch run configuration */}
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button
+                disabled={!promptTemplates.length}
+                onClick={() =>
+                  setVariants((current) => [
+                    ...current,
+                    {
+                      ...createInitialVariant(enabledModelIds),
+                      label: `Variant ${current.length + 1}`,
+                      promptSource: promptTemplates[0]?.id || "current",
+                    },
+                  ])
+                }
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Add variant
+              </Button>
+            }
+            subtitle="Choose the saved prompt and model for each batch variant. Prompts must be saved in Playground first."
+            title="Batch run configuration"
+          />
+
+          {!promptTemplates.length ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Save at least one prompt in Playground before running a batch.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-4">
+            {variants.map((variant, index) => (
+              <Card className="gap-0" key={variant.id}>
+                <CardContent className="grid gap-4 p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {variant.label}
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Field
+                      label="Label"
+                      onChange={(value) => updateVariant(variant.id, { label: value })}
+                      value={variant.label}
+                    />
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`${variant.id}-batch-prompt-source`}>Saved Prompt</Label>
+                      <Select
+                        onValueChange={(value) =>
+                          updateVariant(variant.id, { promptSource: value })
+                        }
+                        value={variant.promptSource}
+                      >
+                        <SelectTrigger
+                          className="w-full"
+                          id={`${variant.id}-batch-prompt-source`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {promptTemplates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label
+                        className="flex items-center gap-1.5"
+                        htmlFor={`${variant.id}-batch-model`}
+                      >
+                        <span>Model</span>
+                        <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
+                      </Label>
+                      <Select
+                        onValueChange={(value) => updateVariant(variant.id, { model: value })}
+                        value={variant.model}
+                      >
+                        <SelectTrigger className="w-full" id={`${variant.id}-batch-model`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableModelOptions.map((model) => (
+                            <SelectItem
+                              disabled={model.unavailable}
+                              key={model.value}
+                              value={model.value}
+                            >
+                              {formatModelOption(model)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {index > 0 ? (
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() =>
+                          setVariants((current) =>
+                            current.filter((item) => item.id !== variant.id),
+                          )
+                        }
+                        size="sm"
+                        type="button"
+                        variant="destructive"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </SectionCard>
       </div>
     </>
   );
 }
 
+// ---------------------------------------------------------------------------
+// HistorySection
+// ---------------------------------------------------------------------------
+
 export function HistorySection(workspace) {
-  const { filteredRuns, handleSaveRating, historySearch, selectedRun, selectedRunId, setHistorySearch, setSelectedRunId } =
-    workspace;
+  const {
+    filteredRuns,
+    handleSaveRating,
+    historySearch,
+    selectedRun,
+    selectedRunId,
+    setHistorySearch,
+    setSelectedRunId,
+  } = workspace;
 
   return (
     <>
       <WorkspacePageHeader
         actions={
-          <input
-            className="search-input"
+          <Input
+            className="w-64"
             onChange={(event) => setHistorySearch(event.target.value)}
             placeholder="Search runs, cases, or models"
             value={historySearch}
@@ -1130,80 +1372,109 @@ export function HistorySection(workspace) {
         title="History"
       />
 
-      <div className="two-column history-layout">
-        <section className="panel-block">
-          <h3>Saved runs</h3>
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Run list */}
+        <SectionCard>
+          <SectionHead title="Saved runs" />
           {filteredRuns.length ? (
-            <div className="history-list">
+            <div className="grid gap-2">
               {filteredRuns.map((run) => {
                 const parts = formatHistoryDateParts(run.createdAt);
                 return (
                   <button
-                    className={`history-card ${selectedRunId === run.id ? "is-active" : ""}`}
+                    className={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-accent/50 ${
+                      selectedRunId === run.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-card"
+                    }`}
                     key={run.id}
                     onClick={() => setSelectedRunId(run.id)}
                     type="button"
                   >
-                    <div className="history-row">
-                      <h4>{run.label}</h4>
-                      <div className="tag-row">
-                        <span className="tag-chip">{run.mode}</span>
-                        <span className="tag-chip tag-chip-muted">{run.status}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-sm font-medium leading-snug">{run.label}</h4>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Badge className="text-[0.65rem]" variant="outline">
+                          {run.mode}
+                        </Badge>
+                        <Badge className="text-[0.65rem]" variant="secondary">
+                          {run.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="history-meta">
+                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>ID {normalizeShortRunId(run.id)}</span>
                       <span>{run.results?.length || 0} variants</span>
                     </div>
-                    <div className="history-footer">
-                      <span className="history-date-stack">
-                        <strong>{parts.date}</strong>
-                        <span>{parts.time}</span>
-                      </span>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      <strong className="font-medium text-foreground">{parts.date}</strong>{" "}
+                      {parts.time}
                     </div>
                   </button>
                 );
               })}
             </div>
           ) : (
-            <div className="empty-state">No runs match the current filter.</div>
+            <EmptyState>No runs match the current filter.</EmptyState>
           )}
-        </section>
+        </SectionCard>
 
-        <section className="panel-block">
-          <div className="utility-row section-head">
-            <h3>Selected run</h3>
-            {selectedRun ? (
-              <button
-                className="tertiary-button"
-                onClick={() => downloadCsv(`run-${selectedRun.id}.csv`, toCsv(serializeRunRows([selectedRun])))}
-                type="button"
-              >
-                Export selected run
-              </button>
-            ) : null}
-          </div>
+        {/* Selected run detail */}
+        <SectionCard>
+          <SectionHead
+            action={
+              selectedRun ? (
+                <Button
+                  onClick={() =>
+                    downloadCsv(
+                      `run-${selectedRun.id}.csv`,
+                      toCsv(serializeRunRows([selectedRun])),
+                    )
+                  }
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Export selected run
+                </Button>
+              ) : null
+            }
+            title="Selected run"
+          />
           {selectedRun ? (
-            <>
-              <div className="callout">
-                <strong>{selectedRun.label}</strong> · {selectedRun.mode} ·{" "}
-                {selectedRun.results?.length || 0} results · ID {normalizeShortRunId(selectedRun.id)}
-                {selectedRun.results?.some((result) => result.isVerified) ? " · Includes verified organizations" : ""}
-              </div>
-              <div className="result-grid section-actions">
+            <div className="grid gap-4">
+              <Alert>
+                <AlertDescription>
+                  <strong>{selectedRun.label}</strong> · {selectedRun.mode} ·{" "}
+                  {selectedRun.results?.length || 0} results · ID{" "}
+                  {normalizeShortRunId(selectedRun.id)}
+                  {selectedRun.results?.some((result) => result.isVerified)
+                    ? " · Includes verified organizations"
+                    : ""}
+                </AlertDescription>
+              </Alert>
+              <div className="grid gap-4">
                 {(selectedRun.results || []).map((result) => (
-                  <ResultCard key={result.id} onSaveRating={handleSaveRating} result={{ ...result, runId: selectedRun.id }} />
+                  <ResultCard
+                    key={result.id}
+                    onSaveRating={handleSaveRating}
+                    result={{ ...result, runId: selectedRun.id }}
+                  />
                 ))}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="empty-state">Generate or batch-run something to populate history.</div>
+            <EmptyState>Generate or batch-run something to populate history.</EmptyState>
           )}
-        </section>
+        </SectionCard>
       </div>
     </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// SettingsSection
+// ---------------------------------------------------------------------------
 
 export function SettingsSection(workspace) {
   const {
@@ -1223,7 +1494,8 @@ export function SettingsSection(workspace) {
 
   const selectedEnabledIds = sanitizeModelConfigurationIds(draftEnabledModelIds);
   const hasChanges =
-    JSON.stringify(selectedEnabledIds) !== JSON.stringify(sanitizeModelConfigurationIds(enabledModelIds));
+    JSON.stringify(selectedEnabledIds) !==
+    JSON.stringify(sanitizeModelConfigurationIds(enabledModelIds));
   const enabledRunnableCount = selectedEnabledIds.length;
 
   function handleModelToggle(modelValue, checked) {
@@ -1242,158 +1514,103 @@ export function SettingsSection(workspace) {
         description="Configure which models are available to future Playground and Batch runs."
         title="Settings"
       />
-      <section className="panel-block">
-        <div className="utility-row section-head">
-          <div>
-            <h3>Model Configuration</h3>
-            <div className="field-help">
-              Enabled models appear in the Playground picker and are reused by Batch runs through the shared variant matrix.
-            </div>
-          </div>
-          <button
-            className="primary-button"
-            disabled={!hasChanges || enabledRunnableCount === 0}
-            onClick={() => handleSaveSettings({ enabledModelIds: selectedEnabledIds })}
-            type="button"
-          >
-            Save settings
-          </button>
-        </div>
 
-        {enabledRunnableCount === 0 ? (
-          <div className="callout error-callout section-note">
-            At least one runnable model must stay enabled.
-          </div>
-        ) : null}
+      <div className="grid gap-6">
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button
+                disabled={!hasChanges || enabledRunnableCount === 0}
+                onClick={() => handleSaveSettings({ enabledModelIds: selectedEnabledIds })}
+                type="button"
+              >
+                Save settings
+              </Button>
+            }
+            subtitle="Enabled models appear in the Playground picker and are reused by Batch runs through the shared variant matrix."
+            title="Model Configuration"
+          />
 
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Enabled</th>
-                <th>Model</th>
-                <th>Provider</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+          {enabledRunnableCount === 0 ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                At least one runnable model must stay enabled.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Enabled</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Provider</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {MODEL_OPTIONS.map((model) => {
                 const isChecked = selectedEnabledIds.includes(model.value);
                 const isLocked = Boolean(model.unavailable);
                 return (
-                  <tr key={model.value}>
-                    <td>
-                      <input
+                  <TableRow key={model.value}>
+                    <TableCell>
+                      <Checkbox
                         checked={isChecked}
                         disabled={isLocked}
-                        onChange={(event) => handleModelToggle(model.value, event.target.checked)}
-                        type="checkbox"
+                        onCheckedChange={(checked) =>
+                          handleModelToggle(model.value, Boolean(checked))
+                        }
                       />
-                    </td>
-                    <td>
-                      <strong>{model.label}</strong>
-                      <div className="field-help">{model.value}</div>
-                    </td>
-                    <td>{model.provider}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
+                      <strong className="font-medium">{model.label}</strong>
+                      <p className="text-xs text-muted-foreground">{model.value}</p>
+                    </TableCell>
+                    <TableCell>{model.provider}</TableCell>
+                    <TableCell>
                       {model.unavailable
                         ? model.note || "Unavailable"
                         : `$${model.input}/$${model.output} per 1M in/out`}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </TableBody>
+          </Table>
+        </SectionCard>
 
-      <section className="panel-block page-section">
-        <div className="utility-row section-head">
-          <div>
-            <h3>Source Pool Management</h3>
-            <div className="field-help">
-              Current pool: {sourcePoolStats.total} rows, {sourcePoolStats.verified} verified,{" "}
-              {sourcePoolStats.unverified} unverified.
-            </div>
-          </div>
-        </div>
-        <div className="field-help" style={{ marginBottom: 12 }}>
-          Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
-          TEAM_ACTIVITY, TEAM_AFFILIATION.
-        </div>
-        <div className="field-group">
-          <label htmlFor="source-pool-import">Upload Source CSV</label>
-          <input
-            accept=".csv,text/csv"
-            id="source-pool-import"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                handleImportSourcePool(file);
-              }
-              event.target.value = "";
-            }}
-            type="file"
+        <SectionCard>
+          <SectionHead
+            subtitle={`Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`}
+            title="Source Pool Management"
           />
-        </div>
-        <div className="field-help">
-          {sourcePoolImporting
-            ? "Importing and replacing the current source pool…"
-            : "Uploading replaces the current source pool."}
-        </div>
-      </section>
-    </>
-  );
-}
-
-function Field({ helpText, label, onChange, trailingAdornment = null, type = "text", value, ...props }) {
-  return (
-    <div className="field-group">
-      <label className="field-label">
-        <span>{label}</span>
-        {helpText ? <HelpTooltip text={helpText} /> : null}
-      </label>
-      <div className={`input-shell ${trailingAdornment ? "has-adornment" : ""}`}>
-        <input onChange={(event) => onChange(event.target.value)} type={type} value={value} {...props} />
-        {trailingAdornment}
+          <p className="text-xs text-muted-foreground">
+            Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
+            TEAM_ACTIVITY, TEAM_AFFILIATION.
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="source-pool-import">Upload Source CSV</Label>
+            <Input
+              accept=".csv,text/csv"
+              id="source-pool-import"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  handleImportSourcePool(file);
+                }
+                event.target.value = "";
+              }}
+              type="file"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {sourcePoolImporting
+              ? "Importing and replacing the current source pool…"
+              : "Uploading replaces the current source pool."}
+          </p>
+        </SectionCard>
       </div>
-    </div>
-  );
-}
-
-function TextAreaField({ label, onChange, value }) {
-  return (
-    <div className="field-group">
-      <label className="field-label">{label}</label>
-      <textarea onChange={(event) => onChange(event.target.value)} value={value} />
-    </div>
-  );
-}
-
-function ToggleField({ checked, label = "", onChange }) {
-  return (
-    <label className="toggle-field">
-      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-      <span aria-hidden="true" className="toggle-switch">
-        <span className="toggle-thumb" />
-      </span>
-      {label ? <span>{label}</span> : null}
-    </label>
-  );
-}
-
-function HelpTooltip({ text }) {
-  return (
-    <span className="tooltip">
-      <button
-        aria-label="Show field help"
-        className="help-button"
-        data-tooltip={text}
-        type="button"
-      >
-        ?
-      </button>
-    </span>
+    </>
   );
 }

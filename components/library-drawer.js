@@ -1,46 +1,49 @@
 import { TrashIcon } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import DrawerShell from "@/components/drawer-shell";
-
-import styles from "@/components/library-drawer.module.css";
 
 function LibraryListItem({ isDefault, item, onDelete, onSelect, type }) {
   const label = type === "case" ? item.name : item.name || "Untitled recipe";
 
   return (
-    <li className={styles.item}>
-      <button className={styles.itemMain} onClick={() => onSelect(item)} type="button">
-        <div className={styles.itemHeader}>
-          <strong>{label}</strong>
-          {isDefault ? <span className="tag-chip tag-chip-muted">Default</span> : null}
+    <li className="flex items-start gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50">
+      <button className="flex-1 text-left" onClick={() => onSelect(item)} type="button">
+        <div className="mb-1 flex items-center gap-2">
+          <strong className="text-sm font-medium">{label}</strong>
+          {isDefault ? (
+            <Badge className="text-[0.65rem]" variant="secondary">
+              Default
+            </Badge>
+          ) : null}
         </div>
-
         {type === "case" ? (
           <>
-            <div className={styles.itemMeta}>
-              <span>{item.organizationType}</span>
-              <span>{item.teamActivity}</span>
-              <span>{item.teamAffiliation}</span>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              {item.organizationType ? <span>{item.organizationType}</span> : null}
+              {item.teamActivity ? <span>{item.teamActivity}</span> : null}
+              {item.teamAffiliation ? <span>{item.teamAffiliation}</span> : null}
             </div>
-            <div className={styles.itemCopy}>
+            <div className="mt-0.5 text-xs text-muted-foreground">
               {item.causeTags.join(", ")} · {item.messageLength}
             </div>
           </>
         ) : (
-          <div className={styles.itemCopy}>
+          <div className="text-xs text-muted-foreground">
             {item.messageLengthInstruction || "No message length instruction"}
           </div>
         )}
       </button>
-
       {!isDefault ? (
-        <button
+        <Button
           aria-label={`Delete ${label}`}
-          className={styles.deleteButton}
           onClick={() => onDelete(item.id)}
+          size="icon-sm"
           type="button"
+          variant="ghost"
         >
           <TrashIcon />
-        </button>
+        </Button>
       ) : null}
     </li>
   );
@@ -64,7 +67,7 @@ export default function LibraryDrawer({
       title={title}
     >
       {items.length ? (
-        <ul className={styles.list}>
+        <ul className="grid gap-2">
           {items.map((item, index) => (
             <LibraryListItem
               isDefault={index === 0}
@@ -77,7 +80,7 @@ export default function LibraryDrawer({
           ))}
         </ul>
       ) : (
-        <div className="empty-state">{emptyState}</div>
+        <p className="py-8 text-center text-sm text-muted-foreground">{emptyState}</p>
       )}
     </DrawerShell>
   );
