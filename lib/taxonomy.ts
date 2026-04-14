@@ -1,7 +1,26 @@
+interface TeamActivityEntry {
+  teamActivity: string;
+  teamAffiliations: string[];
+}
+
+interface OrganizationTaxonomyEntry {
+  organizationType: string;
+  activities: TeamActivityEntry[];
+}
+
+interface TeamActivityConfig {
+  mode: "text" | "select";
+  options: string[];
+}
+
+interface TeamAffiliationConfig extends TeamActivityConfig {
+  allowsOther: boolean;
+}
+
 const OPEN_TEXT = "Open Text";
 const OTHER = "Other";
 
-export const TAXONOMY_OPTIONS = [
+export const TAXONOMY_OPTIONS: OrganizationTaxonomyEntry[] = [
   {
     organizationType: "Arts & Culture",
     activities: [
@@ -174,7 +193,7 @@ export const DEFAULT_TAXONOMY_SELECTION = {
   teamAffiliation: "High School",
 };
 
-function findOrganizationEntry(organizationType) {
+function findOrganizationEntry(organizationType: string): OrganizationTaxonomyEntry {
   return (
     TAXONOMY_OPTIONS.find((entry) => entry.organizationType === organizationType) ||
     TAXONOMY_OPTIONS.find(
@@ -184,12 +203,8 @@ function findOrganizationEntry(organizationType) {
   );
 }
 
-function findActivityEntry(organizationType, teamActivity) {
+function findActivityEntry(organizationType: string, teamActivity: string): TeamActivityEntry | null {
   const organizationEntry = findOrganizationEntry(organizationType);
-  if (!organizationEntry) {
-    return null;
-  }
-
   return (
     organizationEntry.activities.find((activity) => activity.teamActivity === teamActivity) ||
     organizationEntry.activities[0] ||
@@ -197,11 +212,11 @@ function findActivityEntry(organizationType, teamActivity) {
   );
 }
 
-export function getOrganizationTypeOptions() {
+export function getOrganizationTypeOptions(): string[] {
   return TAXONOMY_OPTIONS.map((entry) => entry.organizationType);
 }
 
-export function getTeamActivityConfig(organizationType) {
+export function getTeamActivityConfig(organizationType: string): TeamActivityConfig {
   const organizationEntry = findOrganizationEntry(organizationType);
   const activities = organizationEntry?.activities || [];
   const isOpenText = activities.length === 1 && activities[0]?.teamActivity === OPEN_TEXT;
@@ -212,7 +227,10 @@ export function getTeamActivityConfig(organizationType) {
   };
 }
 
-export function getTeamAffiliationConfig(organizationType, teamActivity) {
+export function getTeamAffiliationConfig(
+  organizationType: string,
+  teamActivity: string,
+): TeamAffiliationConfig {
   const teamActivityConfig = getTeamActivityConfig(organizationType);
   if (teamActivityConfig.mode === "text") {
     return { mode: "text", options: [], allowsOther: true };
@@ -229,10 +247,14 @@ export function getTeamAffiliationConfig(organizationType, teamActivity) {
   };
 }
 
-export function normalizeTaxonomySelection(input = {}) {
+export function normalizeTaxonomySelection(input: {
+  organizationType?: string;
+  teamActivity?: string;
+  teamAffiliation?: string;
+} = {}) {
   const organizationTypeInput = input.organizationType?.trim();
-  const organizationType = getOrganizationTypeOptions().includes(organizationTypeInput)
-    ? organizationTypeInput
+  const organizationType = getOrganizationTypeOptions().includes(organizationTypeInput ?? "")
+    ? organizationTypeInput ?? DEFAULT_TAXONOMY_SELECTION.organizationType
     : DEFAULT_TAXONOMY_SELECTION.organizationType;
 
   const activityConfig = getTeamActivityConfig(organizationType);

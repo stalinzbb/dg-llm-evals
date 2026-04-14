@@ -7,8 +7,9 @@ import {
   normalizeEnabledModelIds,
 } from "@/lib/constants";
 import { normalizePromptTemplate, normalizeTestCase } from "@/lib/prompt";
+import type { AppSettings, Variant } from "@/lib/types/domain";
 
-export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS) {
+export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS): Variant {
   const defaultModel = getDefaultEnabledModelId(normalizeEnabledModelIds(enabledModelIds));
   return {
     id: crypto.randomUUID(),
@@ -23,7 +24,7 @@ export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS
   };
 }
 
-export function createDefaultAppSettings() {
+export function createDefaultAppSettings(): AppSettings {
   return {
     activeTab: "playground",
     playgroundMode: "single",
@@ -36,7 +37,7 @@ export function createDefaultAppSettings() {
   };
 }
 
-function sanitizeVariant(variant, index) {
+function sanitizeVariant(variant: Partial<Variant> | undefined, index: number): Variant {
   const fallback = createInitialVariant(DEFAULT_ENABLED_MODEL_IDS);
   const validModelIds = new Set(normalizeEnabledModelIds(DEFAULT_ENABLED_MODEL_IDS));
   const modelExists = typeof variant?.model === "string" && validModelIds.has(variant.model);
@@ -51,7 +52,7 @@ function sanitizeVariant(variant, index) {
         : index === 0
           ? "Primary"
           : `Variant ${index + 1}`,
-    model: modelExists ? variant.model : fallback.model,
+    model: modelExists ? (variant?.model as string) : fallback.model,
     useOverrides: Boolean(variant?.useOverrides),
     promptSource:
       typeof variant?.promptSource === "string" && variant.promptSource
@@ -60,43 +61,51 @@ function sanitizeVariant(variant, index) {
   };
 }
 
-export function normalizeAppSettings(value) {
+export function normalizeAppSettings(value: unknown): AppSettings {
   const defaults = createDefaultAppSettings();
   if (!value || typeof value !== "object") {
     return defaults;
   }
 
+  const input = value as Partial<AppSettings>;
+  const rawActiveTab =
+    typeof (value as { activeTab?: unknown }).activeTab === "string"
+      ? ((value as { activeTab?: string }).activeTab ?? "")
+      : "";
+  const activeTab =
+    rawActiveTab === "playground" ||
+    rawActiveTab === "batch" ||
+    rawActiveTab === "batches" ||
+    rawActiveTab === "history" ||
+    rawActiveTab === "settings"
+      ? rawActiveTab === "batch"
+        ? "batches"
+        : rawActiveTab
+      : defaults.activeTab;
   return {
-    activeTab:
-      value.activeTab === "playground" ||
-      value.activeTab === "batch" ||
-      value.activeTab === "batches" ||
-      value.activeTab === "history" ||
-      value.activeTab === "settings"
-        ? value.activeTab
-        : defaults.activeTab,
-    playgroundMode: value.playgroundMode === "compare" ? "compare" : defaults.playgroundMode,
+    activeTab,
+    playgroundMode: input.playgroundMode === "compare" ? "compare" : defaults.playgroundMode,
     caseDraft: normalizeTestCase({
       ...defaults.caseDraft,
-      ...(value.caseDraft || {}),
+      ...(input.caseDraft || {}),
     }),
     promptDraft: normalizePromptTemplate({
       ...defaults.promptDraft,
-      ...(value.promptDraft || {}),
+      ...(input.promptDraft || {}),
     }),
     generationSettings: {
       ...defaults.generationSettings,
-      ...(value.generationSettings || {}),
+      ...(input.generationSettings || {}),
     },
     variants:
-      Array.isArray(value.variants) && value.variants.length
-        ? value.variants.map((variant, index) => sanitizeVariant(variant, index))
+      Array.isArray(input.variants) && input.variants.length
+        ? input.variants.map((variant, index) => sanitizeVariant(variant, index))
         : defaults.variants,
-    batchSelection: Array.isArray(value.batchSelection)
-      ? value.batchSelection.filter((item) => typeof item === "string")
+    batchSelection: Array.isArray(input.batchSelection)
+      ? input.batchSelection.filter((item): item is string => typeof item === "string")
       : defaults.batchSelection,
-    importedCases: Array.isArray(value.importedCases)
-      ? value.importedCases.map((item) => normalizeTestCase(item))
+    importedCases: Array.isArray(input.importedCases)
+      ? input.importedCases.map((item) => normalizeTestCase(item))
       : defaults.importedCases,
   };
 }

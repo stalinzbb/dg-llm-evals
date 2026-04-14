@@ -1,10 +1,15 @@
 import { MODEL_PRICING } from "@/lib/constants";
+import type {
+  GenerationSettings,
+  OpenRouterCompletionResult,
+  TestCase,
+} from "@/lib/types/domain";
 
-function estimateTokensFromText(text) {
+function estimateTokensFromText(text: string) {
   return Math.max(1, Math.ceil(text.length / 4));
 }
 
-function estimateCost(model, promptTokens, completionTokens) {
+function estimateCost(model: string, promptTokens: number, completionTokens: number) {
   const pricing = MODEL_PRICING[model];
   if (!pricing) {
     return null;
@@ -15,14 +20,14 @@ function estimateCost(model, promptTokens, completionTokens) {
   return Number((inputCost + outputCost).toFixed(6));
 }
 
-function parseTextContent(content) {
+function parseTextContent(content: unknown) {
   if (typeof content === "string") {
     return content.trim();
   }
 
   if (Array.isArray(content)) {
     return content
-      .map((item) => (typeof item === "string" ? item : item?.text || ""))
+      .map((item) => (typeof item === "string" ? item : typeof item === "object" && item ? `${(item as { text?: string }).text || ""}` : ""))
       .join("\n")
       .trim();
   }
@@ -30,7 +35,7 @@ function parseTextContent(content) {
   return "";
 }
 
-function buildMockCause(testCase) {
+function buildMockCause(testCase: TestCase) {
   const tags = testCase.causeTags.length ? testCase.causeTags.join(", ") : "team needs";
   return `${testCase.teamName} is raising funds to cover ${tags} so athletes at ${testCase.organizationName} can keep showing up fully prepared for ${testCase.teamActivity.toLowerCase()}. Every contribution helps ease costs for families while giving the team reliable support and a stronger season ahead.`;
 }
@@ -41,7 +46,13 @@ export async function requestCompletion({
   userPrompt,
   generationSettings,
   testCase,
-}) {
+}: {
+  model: string;
+  systemPrompt: string;
+  userPrompt: string;
+  generationSettings: GenerationSettings;
+  testCase: TestCase;
+}): Promise<OpenRouterCompletionResult> {
   const promptTokenEstimate = estimateTokensFromText(`${systemPrompt}\n${userPrompt}`);
   const key = process.env.OPENROUTER_API_KEY;
 
@@ -84,7 +95,15 @@ export async function requestCompletion({
     }),
   });
 
-  const payload = await response.json();
+  const payload = (await response.json()) as {
+    error?: { message?: string };
+    choices?: Array<{ message?: { content?: unknown } }>;
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      total_tokens?: number;
+    };
+  };
 
   if (!response.ok) {
     throw new Error(payload?.error?.message || "OpenRouter request failed.");

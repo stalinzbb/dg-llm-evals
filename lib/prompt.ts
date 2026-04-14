@@ -7,20 +7,25 @@ import {
   normalizeEnabledModelIds,
 } from "@/lib/constants";
 import { normalizeTaxonomySelection } from "@/lib/taxonomy";
+import type {
+  GenerationSettings,
+  NormalizedVariant,
+  PromptTemplate,
+  TestCase,
+  Variant,
+} from "@/lib/types/domain";
 
-function clampTagSelection(tags) {
+function clampTagSelection(tags: unknown): string[] {
   const normalized = Array.isArray(tags) ? tags : [];
-  const normalizedOptions = new Map(
-    CAUSE_TAG_OPTIONS.map((tag) => [tag.toLowerCase(), tag]),
-  );
+  const normalizedOptions = new Map(CAUSE_TAG_OPTIONS.map((tag) => [tag.toLowerCase(), tag]));
 
   return normalized
     .map((tag) => normalizedOptions.get(`${tag}`.toLowerCase()) || null)
-    .filter(Boolean)
+    .filter((tag): tag is (typeof CAUSE_TAG_OPTIONS)[number] => tag !== null)
     .slice(0, 3);
 }
 
-export function normalizeTestCase(input = {}) {
+export function normalizeTestCase(input: Partial<TestCase> = {}): TestCase {
   const organizationName = input.organizationName?.trim() || DEFAULT_TEST_CASE.organizationName;
   const teamName = input.teamName?.trim() || DEFAULT_TEST_CASE.teamName;
   const inferredName = [organizationName, teamName].filter(Boolean).join(" · ");
@@ -47,7 +52,8 @@ export function normalizeTestCase(input = {}) {
   };
 }
 
-export function normalizePromptTemplate(input = {}) {
+export function normalizePromptTemplate(input: Partial<PromptTemplate> = {}): PromptTemplate {
+  const promptInput = input as Partial<PromptTemplate> & { messageLength?: string };
   return {
     id: input.id || null,
     name: input.name?.trim() || DEFAULT_PROMPT_TEMPLATE.name,
@@ -57,14 +63,14 @@ export function normalizePromptTemplate(input = {}) {
     prefixText: input.prefixText?.trim() || DEFAULT_PROMPT_TEMPLATE.prefixText,
     suffixText: input.suffixText?.trim() || DEFAULT_PROMPT_TEMPLATE.suffixText,
     messageLengthInstruction:
-      input.messageLengthInstruction?.trim() ||
-      input.messageLength?.trim() ||
+      promptInput.messageLengthInstruction?.trim() ||
+      promptInput.messageLength?.trim() ||
       DEFAULT_PROMPT_TEMPLATE.messageLengthInstruction,
     isActive: input.isActive ?? true,
   };
 }
 
-export function getTestCaseSignature(input = {}) {
+export function getTestCaseSignature(input: Partial<TestCase> = {}): string {
   const normalized = normalizeTestCase(input);
   return JSON.stringify({
     organizationName: normalized.organizationName,
@@ -77,7 +83,7 @@ export function getTestCaseSignature(input = {}) {
   });
 }
 
-export function getPromptTemplateSignature(input = {}) {
+export function getPromptTemplateSignature(input: Partial<PromptTemplate> = {}): string {
   const normalized = normalizePromptTemplate(input);
   return JSON.stringify({
     name: normalized.name,
@@ -90,7 +96,7 @@ export function getPromptTemplateSignature(input = {}) {
   });
 }
 
-export function normalizeGenerationSettings(input = {}) {
+export function normalizeGenerationSettings(input: Partial<GenerationSettings> = {}): GenerationSettings {
   return {
     temperature: Number.isFinite(Number(input.temperature))
       ? Number(input.temperature)
@@ -105,7 +111,10 @@ export function normalizeGenerationSettings(input = {}) {
   };
 }
 
-export function normalizeVariants(input = [], options = {}) {
+export function normalizeVariants(
+  input: Partial<Variant>[] = [],
+  options: { enabledModelIds?: string[] } = {},
+): NormalizedVariant[] {
   const rawVariants = Array.isArray(input) && input.length > 0 ? input : [{ label: "Primary" }];
   const enabledModelIds = normalizeEnabledModelIds(options.enabledModelIds);
   const defaultModel = getDefaultEnabledModelId(enabledModelIds) || "openai/gpt-5.4-mini";
@@ -132,11 +141,11 @@ export function normalizeVariants(input = [], options = {}) {
   }));
 }
 
-export function inferCaseName(testCase) {
+export function inferCaseName(testCase: TestCase): string {
   return [testCase.organizationName, testCase.teamName].filter(Boolean).join(" · ");
 }
 
-export function renderUserPrompt(testCase, promptTemplate) {
+export function renderUserPrompt(testCase: TestCase, promptTemplate: PromptTemplate): string {
   const details = [
     `Organization Name: ${testCase.organizationName}`,
     `Team Name: ${testCase.teamName}`,
@@ -150,14 +159,14 @@ export function renderUserPrompt(testCase, promptTemplate) {
   return `${promptTemplate.userPromptTemplate}\n\n${details}`;
 }
 
-export function buildFullMessage(promptTemplate, causeStatement) {
+export function buildFullMessage(promptTemplate: PromptTemplate, causeStatement: string): string {
   const pieces = [promptTemplate.prefixText, causeStatement, promptTemplate.suffixText]
     .map((item) => item?.trim())
     .filter(Boolean);
   return pieces.join(" ");
 }
 
-export function scoreCharacterCounts(causeStatement, fullMessage) {
+export function scoreCharacterCounts(causeStatement: string, fullMessage: string) {
   return {
     causeOnlyCharacters: causeStatement.length,
     fullMessageCharacters: fullMessage.length,

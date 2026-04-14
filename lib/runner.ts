@@ -1,12 +1,36 @@
-import { buildFullMessage, normalizeGenerationSettings, normalizePromptTemplate, normalizeTestCase, normalizeVariants, renderUserPrompt, scoreCharacterCounts } from "@/lib/prompt";
-import { addVariantResult, createRun, getPromptTemplateById, getRunById, listTestCasesByIds, updateRun } from "@/lib/store";
+import {
+  buildFullMessage,
+  normalizeGenerationSettings,
+  normalizePromptTemplate,
+  normalizeTestCase,
+  normalizeVariants,
+  renderUserPrompt,
+  scoreCharacterCounts,
+} from "@/lib/prompt";
+import {
+  addVariantResult,
+  createRun,
+  getPromptTemplateById,
+  getRunById,
+  listTestCasesByIds,
+  updateRun,
+} from "@/lib/store";
 import { requestCompletion } from "@/lib/openrouter";
+import type { BatchRunRequest, GenerateRunRequest } from "@/lib/types/api";
+import type {
+  GenerationSettings,
+  NormalizedVariant,
+  PromptTemplate,
+  Run,
+  RunResult,
+  TestCase,
+} from "@/lib/types/domain";
 
-function createEphemeralId(prefix) {
+function createEphemeralId(prefix: string) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-function buildVariantSettings(sharedGeneration, variant) {
+function buildVariantSettings(sharedGeneration: GenerationSettings, variant: NormalizedVariant): GenerationSettings {
   return {
     ...sharedGeneration,
     ...(variant.temperature !== null && Number.isFinite(variant.temperature)
@@ -20,7 +44,11 @@ function buildVariantSettings(sharedGeneration, variant) {
   };
 }
 
-async function resolvePromptTemplate(promptDraft, variant, promptTemplatesById) {
+async function resolvePromptTemplate(
+  promptDraft: PromptTemplate,
+  variant: NormalizedVariant,
+  promptTemplatesById: Record<string, PromptTemplate>,
+): Promise<PromptTemplate> {
   if (variant.promptSource !== "current" && promptTemplatesById[variant.promptSource]) {
     return promptTemplatesById[variant.promptSource];
   }
@@ -43,7 +71,14 @@ async function runVariant({
   variant,
   sharedGeneration,
   persist = true,
-}) {
+}: {
+  runId: string;
+  testCase: TestCase;
+  promptTemplate: PromptTemplate;
+  variant: NormalizedVariant;
+  sharedGeneration: GenerationSettings;
+  persist?: boolean;
+}): Promise<RunResult> {
   const generationSettings = buildVariantSettings(sharedGeneration, variant);
   const userPrompt = renderUserPrompt(testCase, promptTemplate);
   const response = await requestCompletion({
@@ -100,10 +135,11 @@ async function runVariant({
   return addVariantResult(resultPayload);
 }
 
-async function runVariantSafely(args) {
+async function runVariantSafely(args: Parameters<typeof runVariant>[0]): Promise<RunResult> {
   try {
     return await runVariant(args);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown generation error.";
     const errorPayload = {
       runId: args.runId,
       caseId: args.testCase.id || null,
@@ -136,7 +172,7 @@ async function runVariantSafely(args) {
       pricing: null,
       provider: "error",
       inputSnapshot: args.testCase,
-      error: error.message,
+      error: message,
     };
 
     if (!args.persist) {
@@ -151,14 +187,14 @@ async function runVariantSafely(args) {
   }
 }
 
-export async function executePlaygroundRun(payload) {
+export async function executePlaygroundRun(payload: GenerateRunRequest): Promise<Run | null> {
   const testCase = normalizeTestCase(payload.caseInput);
   const promptDraft = normalizePromptTemplate(payload.promptDraft);
   const sharedGeneration = normalizeGenerationSettings(payload.generationSettings);
   const variants = normalizeVariants(payload.variants, {
     enabledModelIds: payload.settings?.enabledModelIds,
   });
-  const promptTemplatesById = {};
+  const promptTemplatesById: Record<string, PromptTemplate> = {};
 
   const run = await createRun({
     mode: payload.mode === "compare" ? "compare" : "single",
@@ -187,49 +223,7 @@ export async function executePlaygroundRun(payload) {
   return getRunById(run.id);
 }
 
-export async function executePlaygroundPreview(payload) {
-  const testCase = normalizeTestCase(payload.caseInput);
-  const promptDraft = normalizePromptTemplate(payload.promptDraft);
-  const sharedGeneration = normalizeGenerationSettings(payload.generationSettings);
-  const variants = normalizeVariants(payload.variants, {
-    enabledModelIds: payload.settings?.enabledModelIds,
-  });
-  const promptTemplatesById = {};
-  const timestamp = new Date().toISOString();
-  const run = {
-    id: createEphemeralId("preview"),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    mode: payload.mode === "compare" ? "compare" : "single",
-    label: payload.label || testCase.name,
-    status: "completed",
-    payload: {
-      caseSnapshot: testCase,
-      promptSnapshot: promptDraft,
-      variantConfigs: variants,
-      generationDefaults: sharedGeneration,
-    },
-    results: [],
-    ratings: [],
-  };
-
-  for (const variant of variants) {
-    const promptTemplate = await resolvePromptTemplate(promptDraft, variant, promptTemplatesById);
-    const result = await runVariantSafely({
-      runId: run.id,
-      testCase,
-      promptTemplate,
-      variant,
-      sharedGeneration,
-      persist: false,
-    });
-    run.results.push(result);
-  }
-
-  return run;
-}
-
-export async function executeBatchRun(payload) {
+export async function executeBatchRun(payload: BatchRunRequest): Promise<Run | null> {
   const sharedGeneration = normalizeGenerationSettings(payload.generationSettings);
   const variants = normalizeVariants(payload.variants, {
     enabledModelIds: payload.settings?.enabledModelIds,
@@ -238,7 +232,7 @@ export async function executeBatchRun(payload) {
   const selectedCases = payload.caseIds?.length ? await listTestCasesByIds(payload.caseIds) : [];
   const inlineCases = Array.isArray(payload.inlineCases) ? payload.inlineCases.map(normalizeTestCase) : [];
   const testCases = [...selectedCases, ...inlineCases];
-  const promptTemplatesById = {};
+  const promptTemplatesById: Record<string, PromptTemplate> = {};
 
   if (!testCases.length) {
     throw new Error("Select at least one saved case or import at least one inline case.");

@@ -1,4 +1,11 @@
-export default async function handler(req, res) {
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import type { ApiErrorResponse, AuthSuccessResponse } from "@/lib/types/api";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<AuthSuccessResponse | ApiErrorResponse>,
+) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     res.status(405).json({ error: "Method not allowed." });

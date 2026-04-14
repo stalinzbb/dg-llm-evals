@@ -1,3 +1,5 @@
+import type { GenerationSettings, ModelOption, PromptTemplate, TestCase } from "@/lib/types/domain";
+
 export const CAUSE_TAG_OPTIONS = [
   "Travel",
   "Fees",
@@ -7,9 +9,9 @@ export const CAUSE_TAG_OPTIONS = [
   "Scholarships",
   "Celebration",
   "Tournament",
-];
+] as const;
 
-export const MODEL_OPTIONS = [
+export const MODEL_OPTIONS: ModelOption[] = [
   {
     label: "Gemini 3.1 Pro",
     value: "google/gemini-3.1-pro-preview",
@@ -128,11 +130,11 @@ export const DEFAULT_ENABLED_MODEL_IDS = MODEL_OPTIONS.filter((model) => !model.
   (model) => model.value,
 );
 
-export function getRunnableModelOptions() {
+export function getRunnableModelOptions(): ModelOption[] {
   return MODEL_OPTIONS.filter((model) => !model.unavailable);
 }
 
-export function filterEnabledModelIds(input = []) {
+export function filterEnabledModelIds(input: string[] = []): string[] {
   const validModelIds = new Set(getRunnableModelOptions().map((model) => model.value));
   const requestedIds = Array.isArray(input) ? input : [];
   return requestedIds.filter((value, index) => {
@@ -140,29 +142,28 @@ export function filterEnabledModelIds(input = []) {
   });
 }
 
-export function normalizeEnabledModelIds(input = []) {
+export function normalizeEnabledModelIds(input: string[] = []): string[] {
   const normalizedIds = filterEnabledModelIds(input);
-
   return normalizedIds.length ? normalizedIds : DEFAULT_ENABLED_MODEL_IDS;
 }
 
-export function getEnabledModelOptions(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS) {
+export function getEnabledModelOptions(enabledModelIds: string[] = DEFAULT_ENABLED_MODEL_IDS) {
   const enabledIds = new Set(normalizeEnabledModelIds(enabledModelIds));
   return getRunnableModelOptions().filter((model) => enabledIds.has(model.value));
 }
 
-export function getDefaultEnabledModelId(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS) {
+export function getDefaultEnabledModelId(enabledModelIds: string[] = DEFAULT_ENABLED_MODEL_IDS) {
   return getEnabledModelOptions(enabledModelIds)[0]?.value || DEFAULT_ENABLED_MODEL_IDS[0] || "";
 }
 
 export const MODEL_PRICING = Object.fromEntries(
   getRunnableModelOptions().map((model) => [
     model.value,
-    { input: model.input, output: model.output },
+    { input: model.input ?? 0, output: model.output ?? 0 },
   ]),
-);
+) as Record<string, { input: number; output: number }>;
 
-export const DEFAULT_TEST_CASE = {
+export const DEFAULT_TEST_CASE: Omit<TestCase, "id" | "sourceRecordId" | "sourceType" | "organizationUuid" | "isVerified"> = {
   name: "",
   organizationName: "North Ridge Booster Club",
   teamName: "Girls Volleyball",
@@ -173,7 +174,7 @@ export const DEFAULT_TEST_CASE = {
   messageLength: "80-120 words",
 };
 
-export const DEFAULT_PROMPT_TEMPLATE = {
+export const DEFAULT_PROMPT_TEMPLATE: Omit<PromptTemplate, "id"> = {
   name: "Default fundraiser recipe",
   systemPrompt:
     "Double Good is a virtual fundraising platform that enables groups, teams, and youth-oriented causes to raise funds through a 4-day Pop-Up Store model. Sellers create personalized online stores to sell fresh, made-to-order popcorn, with 50% of proceeds directly supporting their cause. This virtual method provides 3x more sales than traditional fundraising methods. Organizers create an event in the app, share an event code with participants, and each seller creates a Pop-Up Store link to share during the short 4-day fundraiser. You are personalizing the organizer's invite message to a potential seller. Return only the middle section of the note. Make it warm, encouraging, child-safe, and motivating so the seller feels invited to join, help the cause, and make an impact. Use only the provided fields. If selected_cause_tags are provided, treat them as organizer-approved details and weave at least one of them naturally into the message. Do not invent facts, dates, destinations, goals, incentives, or logistics that are not provided. Do not include links, event codes, sign-off lines, or step-by-step joining instructions because the suffix already covers how to join. You may use emojis sparingly if they help the message feel warm and personal. Keep the response readable and engaging within the character budget provided. If the provided fields are insufficient, return EMPTY.",
@@ -187,7 +188,7 @@ export const DEFAULT_PROMPT_TEMPLATE = {
   isActive: true,
 };
 
-export const DEFAULT_GENERATION_SETTINGS = {
+export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   temperature: 0.7,
   topP: 0.9,
   maxTokens: 180,
@@ -201,4 +202,4 @@ export const DEFAULT_RUBRIC = {
   emotionalResonance: 3,
   brandSafety: 3,
   overall: 3,
-};
+} as const;

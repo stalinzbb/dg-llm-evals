@@ -5,30 +5,30 @@ import WorkspaceLayout from "@/components/workspace-layout";
 import WorkspaceStatus from "@/components/workspace-status";
 import { BatchSection, HistorySection, PlaygroundSection } from "@/components/workspace-sections";
 import { useWorkspaceState } from "@/lib/workspace";
+import type { WorkspacePage } from "@/lib/types/domain";
+import type { WorkspaceHomeProps } from "@/lib/types/workspace";
 
-const VALID_PAGES = ["playground", "batches", "history"];
+const VALID_PAGES: WorkspacePage[] = ["playground", "batches", "history"];
 
-function normalizeWorkspacePage(value) {
+function normalizeWorkspacePage(value: string | undefined): WorkspacePage {
   if (typeof value !== "string") return "playground";
-  return VALID_PAGES.includes(value) ? value : "playground";
+  return VALID_PAGES.includes(value as WorkspacePage) ? (value as WorkspacePage) : "playground";
 }
 
-function buildTabQuery(tab) {
+function buildTabQuery(tab: WorkspacePage) {
   return tab === "playground" ? {} : { tab };
 }
 
-export function getInitialWorkspaceTab(queryValue) {
+export function getInitialWorkspaceTab(queryValue?: string | string[]): WorkspacePage {
   return normalizeWorkspacePage(Array.isArray(queryValue) ? queryValue[0] : queryValue);
 }
 
-export default function WorkspaceHome({ initialTab = "playground" }) {
+export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHomeProps) {
   const router = useRouter();
   const workspace = useWorkspaceState(initialTab);
   const activePage = normalizeWorkspacePage(workspace.activePage);
   const queryTab = getInitialWorkspaceTab(router.query.tab);
 
-  // Sync URL → state. Intentionally excludes workspace from deps: this effect should
-  // only fire when the URL changes, not on every workspace state update.
   useEffect(() => {
     if (!router.isReady || queryTab === workspace.activePage) {
       return;
@@ -37,17 +37,13 @@ export default function WorkspaceHome({ initialTab = "playground" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryTab, router.isReady]);
 
-  // Sync state → URL. Intentionally excludes queryTab and router from deps: this
-  // effect should only fire when activePage changes, not on every router update.
   useEffect(() => {
     if (!router.isReady || activePage === queryTab) {
       return;
     }
-    router.replace(
-      { pathname: "/", query: buildTabQuery(activePage) },
-      undefined,
-      { shallow: true },
-    );
+    void router.replace({ pathname: "/", query: buildTabQuery(activePage) }, undefined, {
+      shallow: true,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePage, router.isReady]);
 
@@ -67,22 +63,16 @@ export default function WorkspaceHome({ initialTab = "playground" }) {
     <WorkspaceLayout
       currentPage={activePage}
       description="Generate, compare, batch-run, and review fundraiser message evals from a unified workspace."
-      onNavClick={(page) => workspace.setActivePage(page)}
+      onNavClick={(page: WorkspacePage) => workspace.setActivePage(page)}
       stats={stats}
       theme={workspace.theme}
       title="Eval AI Workspace"
       toggleTheme={workspace.toggleTheme}
     >
       <WorkspaceStatus workspace={workspace} />
-      {!workspace.loading && activePage === "playground" && (
-        <PlaygroundSection {...workspace} />
-      )}
-      {!workspace.loading && activePage === "batches" && (
-        <BatchSection {...workspace} />
-      )}
-      {!workspace.loading && activePage === "history" && (
-        <HistorySection {...workspace} />
-      )}
+      {!workspace.loading && activePage === "playground" && <PlaygroundSection {...workspace} />}
+      {!workspace.loading && activePage === "batches" && <BatchSection {...workspace} />}
+      {!workspace.loading && activePage === "history" && <HistorySection {...workspace} />}
     </WorkspaceLayout>
   );
 }

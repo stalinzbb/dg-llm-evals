@@ -1,4 +1,4 @@
-function escapeCell(value) {
+function escapeCell(value: unknown) {
   const stringValue = `${value ?? ""}`;
   if (/[",\n]/.test(stringValue)) {
     return `"${stringValue.replace(/"/g, '""')}"`;
@@ -6,7 +6,7 @@ function escapeCell(value) {
   return stringValue;
 }
 
-export function toCsv(rows) {
+export function toCsv(rows: Record<string, unknown>[]): string {
   if (!rows.length) {
     return "";
   }
@@ -21,10 +21,10 @@ export function toCsv(rows) {
   return lines.join("\n");
 }
 
-export function parseCsv(text) {
-  const rows = [];
+export function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
   let current = "";
-  let row = [];
+  let row: string[] = [];
   let inQuotes = false;
 
   for (let index = 0; index < text.length; index += 1) {
@@ -75,7 +75,7 @@ export function parseCsv(text) {
 
   const [headers, ...body] = rows;
   return body.map((cells) => {
-    const record = {};
+    const record: Record<string, string> = {};
     headers.forEach((header, index) => {
       record[header] = cells[index] ?? "";
     });
