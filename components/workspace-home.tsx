@@ -5,6 +5,13 @@ import WorkspaceLayout from "@/components/workspace-layout";
 import WorkspaceStatus from "@/components/workspace-status";
 import { BatchSection, HistorySection, PlaygroundSection } from "@/components/workspace-sections";
 import { useWorkspaceState } from "@/lib/workspace";
+import {
+  getBatchSectionProps,
+  getHistorySectionProps,
+  getPlaygroundSectionProps,
+  getWorkspaceStatItems,
+  getWorkspaceStatusViewModel,
+} from "@/lib/workspace-view-models";
 import type { WorkspacePage } from "@/lib/types/domain";
 import type { WorkspaceHomeProps } from "@/lib/types/workspace";
 
@@ -28,6 +35,11 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
   const workspace = useWorkspaceState(initialTab);
   const activePage = normalizeWorkspacePage(workspace.activePage);
   const queryTab = getInitialWorkspaceTab(router.query.tab);
+  const workspaceStatus = getWorkspaceStatusViewModel(workspace);
+  const stats = getWorkspaceStatItems(workspace);
+  const playgroundSection = getPlaygroundSectionProps(workspace);
+  const batchSection = getBatchSectionProps(workspace);
+  const historySection = getHistorySectionProps(workspace);
 
   useEffect(() => {
     if (!router.isReady || queryTab === workspace.activePage) {
@@ -47,18 +59,6 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePage, router.isReady]);
 
-  const stats = [
-    {
-      label: "Generation",
-      value: workspace.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
-    },
-    { label: "Cases", value: workspace.testCases.length },
-    { label: "Prompts", value: workspace.promptTemplates.length },
-    { label: "Runs", value: workspace.runs.length },
-    { label: "Source pool", value: workspace.sourcePoolStats.total },
-    { label: "Workspace", value: workspace.workspaceSaveState },
-  ];
-
   return (
     <WorkspaceLayout
       currentPage={activePage}
@@ -69,10 +69,10 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
       title="Eval AI Workspace"
       toggleTheme={workspace.toggleTheme}
     >
-      <WorkspaceStatus workspace={workspace} />
-      {!workspace.loading && activePage === "playground" && <PlaygroundSection {...workspace} />}
-      {!workspace.loading && activePage === "batches" && <BatchSection {...workspace} />}
-      {!workspace.loading && activePage === "history" && <HistorySection {...workspace} />}
+      <WorkspaceStatus workspace={workspaceStatus} />
+      {!workspace.loading && activePage === "playground" && <PlaygroundSection {...playgroundSection} />}
+      {!workspace.loading && activePage === "batches" && <BatchSection {...batchSection} />}
+      {!workspace.loading && activePage === "history" && <HistorySection {...historySection} />}
     </WorkspaceLayout>
   );
 }

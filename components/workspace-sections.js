@@ -233,6 +233,7 @@ export function PlaygroundSection(workspace) {
     availableModelOptions,
     causeTagOptions,
     caseDraft,
+    enabledModelIds,
     generationSettings,
     handleGenerate,
     handleRandomizeCauseTags,
@@ -714,7 +715,7 @@ export function PlaygroundSection(workspace) {
                 setVariants((current) => [
                   ...current,
                   {
-                    ...createInitialVariant(workspace.enabledModelIds),
+                    ...createInitialVariant(enabledModelIds),
                     label: `Variant ${current.length + 1}`,
                   },
                 ])
@@ -985,6 +986,7 @@ export function BatchSection(workspace) {
     setBatchSelection,
     setImportedCases,
     setVariants,
+    shapeImportedCase,
     sourcePoolStats,
     testCases,
     updateVariant,
@@ -1114,7 +1116,7 @@ export function BatchSection(workspace) {
                     return;
                   }
                   const text = await file.text();
-                  const parsed = parseCsv(text).map(workspace.shapeImportedCase);
+                  const parsed = parseCsv(text).map(shapeImportedCase);
                   setImportedCases(parsed);
                 }}
                 type="file"

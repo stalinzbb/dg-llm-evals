@@ -2,21 +2,17 @@ import WorkspaceLayout from "@/components/workspace-layout";
 import { SettingsSection } from "@/components/workspace-sections";
 import WorkspaceStatus from "@/components/workspace-status";
 import { useWorkspaceState } from "@/lib/workspace";
+import {
+  getSettingsSectionProps,
+  getWorkspaceStatItems,
+  getWorkspaceStatusViewModel,
+} from "@/lib/workspace-view-models";
 
 export default function SettingsPage() {
   const workspace = useWorkspaceState("settings");
-
-  const stats = [
-    {
-      label: "Generation",
-      value: workspace.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
-    },
-    { label: "Cases", value: workspace.testCases.length },
-    { label: "Prompts", value: workspace.promptTemplates.length },
-    { label: "Runs", value: workspace.runs.length },
-    { label: "Source pool", value: workspace.sourcePoolStats.total },
-    { label: "Workspace", value: workspace.workspaceSaveState },
-  ];
+  const workspaceStatus = getWorkspaceStatusViewModel(workspace);
+  const stats = getWorkspaceStatItems(workspace);
+  const settingsSection = getSettingsSectionProps(workspace);
 
   return (
     <WorkspaceLayout
@@ -28,8 +24,8 @@ export default function SettingsPage() {
       title="Eval AI Workspace"
       toggleTheme={workspace.toggleTheme}
     >
-      <WorkspaceStatus workspace={workspace} />
-      {!workspace.loading && <SettingsSection {...workspace} />}
+      <WorkspaceStatus workspace={workspaceStatus} />
+      {!workspace.loading && <SettingsSection {...settingsSection} />}
     </WorkspaceLayout>
   );
 }

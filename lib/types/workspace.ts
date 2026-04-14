@@ -105,7 +105,90 @@ export interface WorkspaceState {
   workspaceSaveState: string;
 }
 
-export type SectionProps = WorkspaceState;
+export interface WorkspaceStatItem {
+  label: string;
+  value: number | string;
+}
+
+export interface WorkspaceStatusViewModel {
+  dismissMessage: (kind: "error" | "success") => void;
+  errorMessage: string;
+  loading: boolean;
+  statusMessage: string;
+}
+
+export interface PlaygroundSectionProps {
+  availableModelOptions: WorkspaceState["availableModelOptions"];
+  canSaveCase: WorkspaceState["canSaveCase"];
+  canSavePrompt: WorkspaceState["canSavePrompt"];
+  caseDraft: WorkspaceState["caseDraft"];
+  causeTagOptions: WorkspaceState["causeTagOptions"];
+  enabledModelIds: WorkspaceState["enabledModelIds"];
+  generationSettings: WorkspaceState["generationSettings"];
+  handleDeleteCase: WorkspaceState["handleDeleteCase"];
+  handleDeletePrompt: WorkspaceState["handleDeletePrompt"];
+  handleGenerate: WorkspaceState["handleGenerate"];
+  handleRandomizeCaseFromSourcePool: WorkspaceState["handleRandomizeCaseFromSourcePool"];
+  handleRandomizeCauseTags: WorkspaceState["handleRandomizeCauseTags"];
+  handleSaveCase: WorkspaceState["handleSaveCase"];
+  handleSavePrompt: WorkspaceState["handleSavePrompt"];
+  normalizeTestCase: WorkspaceState["normalizeTestCase"];
+  playgroundGenerating: WorkspaceState["playgroundGenerating"];
+  playgroundMode: WorkspaceState["playgroundMode"];
+  playgroundRandomizing: WorkspaceState["playgroundRandomizing"];
+  playgroundRun: WorkspaceState["playgroundRun"];
+  promptDraft: WorkspaceState["promptDraft"];
+  promptTemplates: WorkspaceState["promptTemplates"];
+  setCaseDraft: WorkspaceState["setCaseDraft"];
+  setGenerationSettings: WorkspaceState["setGenerationSettings"];
+  setPromptDraft: WorkspaceState["setPromptDraft"];
+  setVariants: WorkspaceState["setVariants"];
+  sourcePoolStats: WorkspaceState["sourcePoolStats"];
+  testCases: WorkspaceState["testCases"];
+  updateVariant: WorkspaceState["updateVariant"];
+  variants: WorkspaceState["variants"];
+}
+
+export interface BatchSectionProps {
+  availableModelOptions: WorkspaceState["availableModelOptions"];
+  batchGenerating: WorkspaceState["batchGenerating"];
+  batchSampleCount: WorkspaceState["batchSampleCount"];
+  batchSelection: WorkspaceState["batchSelection"];
+  batchVerificationFilter: WorkspaceState["batchVerificationFilter"];
+  enabledModelIds: WorkspaceState["enabledModelIds"];
+  handleBatchRun: WorkspaceState["handleBatchRun"];
+  handleSaveImportedCases: WorkspaceState["handleSaveImportedCases"];
+  importedCases: WorkspaceState["importedCases"];
+  promptTemplates: WorkspaceState["promptTemplates"];
+  setBatchSampleCount: WorkspaceState["setBatchSampleCount"];
+  setBatchSelection: WorkspaceState["setBatchSelection"];
+  setBatchVerificationFilter: WorkspaceState["setBatchVerificationFilter"];
+  setImportedCases: WorkspaceState["setImportedCases"];
+  setVariants: WorkspaceState["setVariants"];
+  shapeImportedCase: WorkspaceState["shapeImportedCase"];
+  sourcePoolStats: WorkspaceState["sourcePoolStats"];
+  testCases: WorkspaceState["testCases"];
+  updateVariant: WorkspaceState["updateVariant"];
+  variants: WorkspaceState["variants"];
+}
+
+export interface HistorySectionProps {
+  filteredRuns: WorkspaceState["filteredRuns"];
+  handleSaveRating: WorkspaceState["handleSaveRating"];
+  historySearch: WorkspaceState["historySearch"];
+  selectedRun: WorkspaceState["selectedRun"];
+  selectedRunId: WorkspaceState["selectedRunId"];
+  setHistorySearch: WorkspaceState["setHistorySearch"];
+  setSelectedRunId: WorkspaceState["setSelectedRunId"];
+}
+
+export interface SettingsSectionProps {
+  enabledModelIds: WorkspaceState["enabledModelIds"];
+  handleImportSourcePool: WorkspaceState["handleImportSourcePool"];
+  handleSaveSettings: WorkspaceState["handleSaveSettings"];
+  sourcePoolImporting: WorkspaceState["sourcePoolImporting"];
+  sourcePoolStats: WorkspaceState["sourcePoolStats"];
+}
 
 export interface WorkspaceHomeProps {
   initialTab?: WorkspacePage;

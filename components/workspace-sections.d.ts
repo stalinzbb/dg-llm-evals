@@ -1,6 +1,11 @@
-import type { SectionProps } from "@/lib/types/workspace";
+import type {
+  BatchSectionProps,
+  HistorySectionProps,
+  PlaygroundSectionProps,
+  SettingsSectionProps,
+} from "@/lib/types/workspace";
 
-export function PlaygroundSection(props: SectionProps): JSX.Element;
-export function BatchSection(props: SectionProps): JSX.Element;
-export function HistorySection(props: SectionProps): JSX.Element;
-export function SettingsSection(props: SectionProps): JSX.Element;
+export function PlaygroundSection(props: PlaygroundSectionProps): JSX.Element;
+export function BatchSection(props: BatchSectionProps): JSX.Element;
+export function HistorySection(props: HistorySectionProps): JSX.Element;
+export function SettingsSection(props: SettingsSectionProps): JSX.Element;

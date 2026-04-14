@@ -114,9 +114,9 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 **Checklist**
 
 - [ ] Extract fetch and persistence helpers from `lib/workspace`
-- [ ] Create typed action layer for user operations
+- [x] Create typed action layer for user operations
 - [ ] Create typed selectors for history, counts, and model availability
-- [ ] Narrow feature view-model contracts
+- [x] Narrow feature view-model contracts
 - [x] Extract typed browser persistence and theme helpers from `lib/workspace`
 - [x] Extract typed API client helpers from `lib/workspace`
 - [x] Extract typed selectors for run filtering, selected run, and save-state comparisons
@@ -127,16 +127,18 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 - The most effective first Phase 2 cut was not a state-library change; it was separating browser persistence, API access, and derived selectors from the hook.
 - The `workspace` return surface is still broad because `workspace-sections.js` still consumes a large combined contract.
 - Direct UI splitting is still premature until per-feature view models are introduced in front of `workspace-sections.js`.
+- Per-feature typed adapters now sit between `useWorkspaceState` and the section entry points, so pages no longer spread the full workspace bag directly into every section.
+- The main workspace hook now delegates user operations to a dedicated typed action module, leaving the hook focused on state, effects, and composition.
 
 **Carry-forward risks**
 
 - `useWorkspaceState` is now better bounded, but it still coordinates many feature actions in one hook.
-- `components/workspace-sections.js` still depends on a wide cross-feature object, which limits how narrow the Phase 2 contracts can become before Phase 3.
+- `components/workspace-sections.js` still contains multiple features in one file even though its public entry contracts are now narrowed per feature.
 - Manual UI regression coverage is still needed because the Phase 2 refactor preserved behavior by structure, not by automated UI tests.
 
 **Next session start point**
 
-Read this document, then decide whether to finish Phase 2 by introducing per-feature view models/adapters for playground, batches, history, and settings, or move directly into Phase 3 if the current boundaries are sufficient.
+Read this document, then decide whether to finish Phase 2 by extracting the remaining shared selectors for counts/model availability and performing manual workspace QA, or move to Phase 3 if the current hook boundaries are sufficient.
 
 ## Phase 3
 
