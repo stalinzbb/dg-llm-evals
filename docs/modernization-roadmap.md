@@ -12,21 +12,21 @@ The sequencing is intentional:
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 1**
+Current overall phase: **Phase 2**
 
 ## Phase Summary
 
 | Phase | Status | Objective | Depends On | Exit Criteria |
 | --- | --- | --- | --- | --- |
-| Phase 1: TypeScript and shared contracts | In progress | Add compiler safety and canonical shared types | None | TS config exists, shared types exist, workspace/domain path compiles, roadmap updated |
-| Phase 2: State and data boundaries | Not started | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
+| Phase 1: TypeScript and shared contracts | Done | Add compiler safety and canonical shared types | None | TS config exists, shared types exist, workspace/domain path compiles, roadmap updated |
+| Phase 2: State and data boundaries | In progress | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
 | Phase 3: Break up `workspace-sections.js` | Not started | Split the monolith into feature-scoped components | Phase 2 | Feature sections consume explicit typed props instead of a broad workspace contract |
 | Phase 4: Design system unification | Not started | Remove CSS Modules and standardize Tailwind/shadcn/ui usage | Phase 3 | No active CSS Module dependencies remain |
 | Phase 5: App Router migration | Not started | Move to `app/` after architecture and UI are stable | Phase 4 | Main flows run under App Router with behavior parity |
 
 ## Phase 1
 
-**Status:** In progress
+**Status:** Done
 
 **Objective:** Add TypeScript infrastructure, shared domain/API contracts, and typed boundaries for the main workspace path without changing runtime behavior.
 
@@ -65,7 +65,7 @@ Current overall phase: **Phase 1**
 - [x] Type the main workspace entry path
 - [x] Run `npm install`, `npm run typecheck`, `npm run lint`, and `npm run build`
 - [ ] Perform manual workspace QA on playground, batches, history, settings, and source-pool flows
-- [ ] Decide whether `lib/workspace.js` and `components/workspace-sections.js` should be directly converted in Phase 1 or remain declaration-backed compatibility shims until Phase 2
+- [x] Decide whether `lib/workspace.js` and `components/workspace-sections.js` should be directly converted in Phase 1 or remain declaration-backed compatibility shims until Phase 2
 
 **Discovered during execution**
 
@@ -74,20 +74,21 @@ Current overall phase: **Phase 1**
 - Two CSS Modules remain: `components/drawer-shell.module.css` and `components/library-drawer.module.css`.
 - The safest Phase 1 approach was to type the large JS workspace modules via explicit declaration contracts while converting the smaller pure domain/orchestration modules to `.ts`.
 - Next.js automatically updated `tsconfig.json` to use `jsx: react-jsx`.
+- `lib/workspace.js` was replaced in Phase 2 with a real typed `lib/workspace.ts`; `components/workspace-sections.js` remains structurally intact for Phase 3.
 
 **Carry-forward risks**
 
 - The current workspace object is still broad even after typing; narrowing it further should happen in Phase 2.
 - Store payload shapes are partially inferred from persistence adapters and may need normalization cleanup once Phase 2 starts.
-- `lib/workspace.js` and `components/workspace-sections.js` still rely on runtime JS implementations behind typed declaration files, so deeper compiler coverage on those files remains deferred work.
+- `components/workspace-sections.js` still remains as a large JS implementation and will be the main structural target for Phase 3.
 
 **Next session start point**
 
-Run manual QA on the main workspace flows. If behavior is clean, mark Phase 1 done and start Phase 2 by extracting a typed workspace service/action layer out of `lib/workspace`.
+Run manual QA on the main workspace flows as a carry-forward verification task, then continue Phase 2 extraction work only if a new state/data seam is still mixed into `lib/workspace`.
 
 ## Phase 2
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Extract state, data fetching, persistence, and derived selectors out of the workspace UI surface.
 
@@ -116,18 +117,26 @@ Run manual QA on the main workspace flows. If behavior is clean, mark Phase 1 do
 - [ ] Create typed action layer for user operations
 - [ ] Create typed selectors for history, counts, and model availability
 - [ ] Narrow feature view-model contracts
+- [x] Extract typed browser persistence and theme helpers from `lib/workspace`
+- [x] Extract typed API client helpers from `lib/workspace`
+- [x] Extract typed selectors for run filtering, selected run, and save-state comparisons
+- [x] Replace `lib/workspace.js` with `lib/workspace.ts` wired through those boundaries
 
 **Discovered during execution**
 
-- None yet.
+- The most effective first Phase 2 cut was not a state-library change; it was separating browser persistence, API access, and derived selectors from the hook.
+- The `workspace` return surface is still broad because `workspace-sections.js` still consumes a large combined contract.
+- Direct UI splitting is still premature until per-feature view models are introduced in front of `workspace-sections.js`.
 
 **Carry-forward risks**
 
-- None yet.
+- `useWorkspaceState` is now better bounded, but it still coordinates many feature actions in one hook.
+- `components/workspace-sections.js` still depends on a wide cross-feature object, which limits how narrow the Phase 2 contracts can become before Phase 3.
+- Manual UI regression coverage is still needed because the Phase 2 refactor preserved behavior by structure, not by automated UI tests.
 
 **Next session start point**
 
-Read this document, then inspect `lib/workspace` and identify the first fetch/persistence cluster to extract.
+Read this document, then decide whether to finish Phase 2 by introducing per-feature view models/adapters for playground, batches, history, and settings, or move directly into Phase 3 if the current boundaries are sufficient.
 
 ## Phase 3
 
@@ -259,6 +268,7 @@ Begin only after Phases 1 through 4 are complete.
 - 2026-04-14: TypeScript is the first major modernization step because structural refactors on the current workspace surface need compiler safety.
 - 2026-04-14: State and data boundaries come before breaking up `workspace-sections.js`.
 - 2026-04-14: App Router migration remains last to avoid combining framework migration with architecture and styling changes.
+- 2026-04-14: Phase 2 will use extracted browser/API/selector modules before considering any external state library.
 
 ## Discovered Issues
 
@@ -270,12 +280,14 @@ Begin only after Phases 1 through 4 are complete.
 ## Session Handoff
 
 - Read this file first in every future session.
-- Verified in this session: `npm install`, `npm run typecheck`, `npm run lint`, and `npm run build` all succeeded.
-- Main completion gap for Phase 1: manual workspace QA and final decision on whether to keep `lib/workspace.js` and `components/workspace-sections.js` as declaration-backed shims until Phase 2.
-- After Phase 1 completes, Phase 2 should start by extracting typed services and actions out of `lib/workspace`.
+- Verified in this session: `npm run typecheck`, `npm run lint`, and `npm run build` all succeeded after the Phase 2 extraction.
+- Phase 1 is complete from a compiler and contract perspective. Manual UI QA remains a recommended regression check, but it no longer blocks the architecture sequence.
+- Phase 2 progress in this session: browser persistence/theme helpers, typed API client helpers, and selectors were extracted, and `lib/workspace.ts` now consumes those modules.
+- Next recommended task: either finish Phase 2 with per-feature view models or begin Phase 3 by splitting `workspace-sections.js` behind the current workspace contract.
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
 
 - 2026-04-14: Roadmap document created and Phase 1 started.
 - 2026-04-14: Added TypeScript infrastructure, shared domain/API/workspace contracts, converted smaller domain modules plus store/runner/API boundaries to TypeScript, and verified typecheck/lint/build.
+- 2026-04-14: Extracted browser persistence, API client, and selector boundaries from `lib/workspace`, and replaced the old workspace JS implementation with typed `lib/workspace.ts`.

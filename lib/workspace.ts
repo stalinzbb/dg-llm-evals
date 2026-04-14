@@ -1,65 +1,95 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 import { createDefaultAppSettings, normalizeAppSettings } from "@/lib/app-settings";
 import {
   CAUSE_TAG_OPTIONS,
-  DEFAULT_GENERATION_SETTINGS,
   DEFAULT_ENABLED_MODEL_IDS,
-  DEFAULT_PROMPT_TEMPLATE,
-  DEFAULT_TEST_CASE,
   filterEnabledModelIds,
-  getDefaultEnabledModelId,
-  getEnabledModelOptions,
   normalizeEnabledModelIds,
 } from "@/lib/constants";
+import { parseCsv } from "@/lib/csv";
 import {
   getPromptTemplateSignature,
   getTestCaseSignature,
   normalizePromptTemplate,
   normalizeTestCase,
 } from "@/lib/prompt";
-import { parseCsv } from "@/lib/csv";
 import { randomizeCauseTags } from "@/lib/source-pool";
+import {
+  applyThemePreference,
+  readBrowserAppSettings,
+  readBrowserModelSettings,
+  readStoredTheme,
+  writeBrowserAppSettings,
+  writeBrowserModelSettings,
+  writeStoredTheme,
+} from "@/lib/workspace-browser";
+import {
+  batchRunRequest,
+  deletePromptTemplateRequest,
+  deleteTestCaseRequest,
+  fetchBootstrap,
+  generateRunRequest,
+  importSourcePoolChunkRequest,
+  randomSourcePoolRowRequest,
+  sampleSourcePoolRequest,
+  saveAppSettingsRequest,
+  savePromptTemplateRequest,
+  saveRatingRequest,
+  saveTestCasesRequest,
+  saveWorkspaceSettingsRequest,
+} from "@/lib/workspace-api";
+import {
+  getAvailableModelOptions,
+  getCaseDraftSignature,
+  getCaseMatchesExisting,
+  getFilteredRuns,
+  getPlaygroundMode,
+  getPromptDraftSignature,
+  getPromptMatchesExisting,
+  getSelectedRun,
+  getWorkspaceDefaultEnabledModelId,
+} from "@/lib/workspace-selectors";
+import type { SaveRatingRequest } from "@/lib/types/api";
+import type {
+  AppSettings,
+  GenerationSettings,
+  ModelOption,
+  PromptTemplate,
+  Run,
+  SourcePoolRecord,
+  SourcePoolStats,
+  TestCase,
+  Theme,
+  Variant,
+  WorkspacePage,
+  WorkspaceSettings,
+} from "@/lib/types/domain";
+import type { HandleBatchRunOptions, WorkspaceSnapshot, WorkspaceState } from "@/lib/types/workspace";
 
 const SOURCE_POOL_IMPORT_CHUNK_SIZE = 250;
-const APP_SETTINGS_STORAGE_KEY = "dg-evals-app-settings-v1";
-const MODEL_SETTINGS_STORAGE_KEY = "dg-evals-model-settings-v1";
 
-async function readJson(response) {
-  const contentType = response.headers.get("content-type") || "";
-  const isJson = contentType.includes("application/json");
+type StorageMode = "local" | "supabase";
+type SettingsStorageMode = "browser" | "supabase";
 
-  if (isJson) {
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Request failed.");
-    }
-    return payload;
-  }
-
-  const text = await response.text();
-  const normalizedText = text.trim();
-
-  if (!response.ok) {
-    if (normalizedText.includes("Authentication Required")) {
-      throw new Error(
-        "Request was blocked by deployment protection. Sign in to the preview deployment or disable Vercel Authentication for that environment.",
-      );
-    }
-
-    if (normalizedText.startsWith("Request Entity Too Large")) {
-      throw new Error("Upload failed because the request body is too large. Split the CSV into smaller files.");
-    }
-
-    throw new Error(normalizedText.slice(0, 240) || "Request failed.");
-  }
-
-  throw new Error(
-    `Expected JSON but received ${contentType || "an unknown response type"}. ${normalizedText.slice(0, 160)}`,
-  );
+function ensureErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
-export function downloadCsv(filename, csvString) {
+function updateRunCollection(run: Run, currentRuns: Run[]) {
+  return [run, ...currentRuns.filter((item) => item.id !== run.id)];
+}
+
+export function downloadCsv(filename: string, csvString: string) {
   const blob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -71,22 +101,17 @@ export function downloadCsv(filename, csvString) {
   URL.revokeObjectURL(url);
 }
 
-export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS) {
-  const defaultModel = getDefaultEnabledModelId(enabledModelIds);
-  return {
-    id: crypto.randomUUID(),
-    label: "Primary",
-    model: defaultModel,
-    promptSource: "current",
-    useOverrides: false,
-    temperature: "",
-    topP: "",
-    maxTokens: "",
-    seed: "",
-  };
+export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS): Variant {
+  return createDefaultAppSettings().variants[0] && enabledModelIds
+    ? {
+        ...createDefaultAppSettings().variants[0],
+        model: getWorkspaceDefaultEnabledModelId(enabledModelIds),
+        id: crypto.randomUUID(),
+      }
+    : createDefaultAppSettings().variants[0];
 }
 
-export function shapeImportedCase(record) {
+export function shapeImportedCase(record: Record<string, string>): TestCase {
   const organizationUuid = `${record.ORGANIZATION_UUID || record.organizationUuid || ""}`.trim();
   const causeTags = record.causeTags
     ? record.causeTags.split("|").map((item) => item.trim()).filter(Boolean)
@@ -106,7 +131,7 @@ export function shapeImportedCase(record) {
   });
 }
 
-export function serializeRunRows(runs) {
+export function serializeRunRows(runs: Run[]) {
   return runs.flatMap((run) =>
     (run.results || []).map((result) => ({
       runId: run.id,
@@ -133,123 +158,82 @@ export function serializeRunRows(runs) {
   );
 }
 
-export function formatModelOption(model) {
+export function formatModelOption(model: ModelOption) {
   if (model.unavailable) {
     return `${model.label} · unavailable`;
   }
   return `${model.label} · $${model.input}/$${model.output} per 1M in/out`;
 }
 
-export function formatShortId(value, length = 8) {
+export function formatShortId(value: string, length = 8) {
   if (!value) {
     return "";
   }
   return value.slice(0, length);
 }
 
-function readBrowserAppSettings(fallback) {
-  if (typeof window === "undefined") {
-    return normalizeAppSettings(fallback);
-  }
-
-  try {
-    const raw = window.localStorage.getItem(APP_SETTINGS_STORAGE_KEY);
-    return raw ? normalizeAppSettings(JSON.parse(raw)) : normalizeAppSettings(fallback);
-  } catch {
-    return normalizeAppSettings(fallback);
-  }
+function createWorkspaceSnapshot(args: {
+  activePage: WorkspacePage;
+  playgroundMode: "single" | "compare";
+  caseDraft: TestCase;
+  promptDraft: PromptTemplate;
+  generationSettings: GenerationSettings;
+  variants: Variant[];
+  batchSelection: string[];
+  importedCases: TestCase[];
+}): WorkspaceSnapshot {
+  return {
+    activeTab: args.activePage,
+    playgroundMode: args.playgroundMode,
+    caseDraft: args.caseDraft,
+    promptDraft: args.promptDraft,
+    generationSettings: args.generationSettings,
+    variants: args.variants,
+    batchSelection: args.batchSelection,
+    importedCases: args.importedCases,
+  };
 }
 
-function writeBrowserAppSettings(settings) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(normalizeAppSettings(settings)));
-}
-
-function readBrowserModelSettings(fallback) {
-  if (typeof window === "undefined") {
-    return {
-      enabledModelIds: normalizeEnabledModelIds(fallback?.enabledModelIds),
-    };
-  }
-
-  try {
-    const raw = window.localStorage.getItem(MODEL_SETTINGS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : fallback;
-    return {
-      enabledModelIds: normalizeEnabledModelIds(parsed?.enabledModelIds),
-    };
-  } catch {
-    return {
-      enabledModelIds: normalizeEnabledModelIds(fallback?.enabledModelIds),
-    };
-  }
-}
-
-function writeBrowserModelSettings(settings) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(
-    MODEL_SETTINGS_STORAGE_KEY,
-    JSON.stringify({
-      enabledModelIds: normalizeEnabledModelIds(settings?.enabledModelIds),
-    }),
-  );
-}
-
-function applyThemePreference(theme) {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.classList.toggle("dark", theme === "dark");
-}
-
-export function useWorkspaceState(defaultPage = "playground") {
+export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): WorkspaceState {
   const initialPageRef = useRef(defaultPage);
   const defaultAppSettingsRef = useRef(createDefaultAppSettings());
-  const [activePage, setActivePage] = useState(defaultPage);
-  const [testCases, setTestCases] = useState([]);
-  const [promptTemplates, setPromptTemplates] = useState([]);
-  const [runs, setRuns] = useState([]);
-  const [storageMode, setStorageMode] = useState("local");
+  const [activePage, setActivePage] = useState<WorkspacePage>(defaultPage);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
+  const [storageMode, setStorageMode] = useState<StorageMode>("local");
   const [platformStatus, setPlatformStatus] = useState({
     openRouterConfigured: false,
     gateEnabled: false,
   });
-  const [caseDraft, setCaseDraft] = useState(defaultAppSettingsRef.current.caseDraft);
-  const [promptDraft, setPromptDraft] = useState(defaultAppSettingsRef.current.promptDraft);
-  const [generationSettings, setGenerationSettings] = useState(
+  const [caseDraft, setCaseDraft] = useState<TestCase>(defaultAppSettingsRef.current.caseDraft);
+  const [promptDraft, setPromptDraft] = useState<PromptTemplate>(defaultAppSettingsRef.current.promptDraft);
+  const [generationSettings, setGenerationSettings] = useState<GenerationSettings>(
     defaultAppSettingsRef.current.generationSettings,
   );
-  const [settings, setSettings] = useState({ enabledModelIds: DEFAULT_ENABLED_MODEL_IDS });
-  const [variants, setVariants] = useState(defaultAppSettingsRef.current.variants);
+  const [settings, setSettings] = useState<WorkspaceSettings>({ enabledModelIds: DEFAULT_ENABLED_MODEL_IDS });
+  const [variants, setVariants] = useState<Variant[]>(defaultAppSettingsRef.current.variants);
   const [selectedRunId, setSelectedRunId] = useState("");
-  const [playgroundRun, setPlaygroundRun] = useState(null);
+  const [playgroundRun, setPlaygroundRun] = useState<Run | null>(null);
   const [playgroundGenerating, setPlaygroundGenerating] = useState(false);
   const [playgroundRandomizing, setPlaygroundRandomizing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [historySearch, setHistorySearch] = useState("");
-  const [batchSelection, setBatchSelection] = useState(defaultAppSettingsRef.current.batchSelection);
-  const [importedCases, setImportedCases] = useState(defaultAppSettingsRef.current.importedCases);
-  const [sourcePoolStats, setSourcePoolStats] = useState({ total: 0, verified: 0, unverified: 0 });
+  const [batchSelection, setBatchSelection] = useState<string[]>(defaultAppSettingsRef.current.batchSelection);
+  const [importedCases, setImportedCases] = useState<TestCase[]>(defaultAppSettingsRef.current.importedCases);
+  const [sourcePoolStats, setSourcePoolStats] = useState<SourcePoolStats>({ total: 0, verified: 0, unverified: 0 });
   const [sourcePoolImporting, setSourcePoolImporting] = useState(false);
   const [batchSampleCount, setBatchSampleCount] = useState("20");
-  const [batchVerificationFilter, setBatchVerificationFilter] = useState("any");
+  const [batchVerificationFilter, setBatchVerificationFilter] = useState<"any" | "verified" | "unverified">("any");
   const [batchGenerating, setBatchGenerating] = useState(false);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState<Theme>("light");
   const [workspaceSaveState, setWorkspaceSaveState] = useState("Saved");
-  const [appSettingsStorageMode, setAppSettingsStorageMode] = useState("browser");
-  const [workspaceSettingsStorageMode, setWorkspaceSettingsStorageMode] = useState("browser");
+  const [appSettingsStorageMode, setAppSettingsStorageMode] = useState<SettingsStorageMode>("browser");
+  const [workspaceSettingsStorageMode, setWorkspaceSettingsStorageMode] = useState<SettingsStorageMode>("browser");
   const workspaceSettingsReadyRef = useRef(false);
-  const workspaceSaveTimerRef = useRef(null);
+  const workspaceSaveTimerRef = useRef<number | null>(null);
   const skipNextWorkspaceSaveRef = useRef(false);
 
   const deferredSearch = useDeferredValue(historySearch);
@@ -258,31 +242,46 @@ export function useWorkspaceState(defaultPage = "playground") {
     [settings.enabledModelIds],
   );
   const availableModelOptions = useMemo(
-    () => getEnabledModelOptions(enabledModelIds),
+    () => getAvailableModelOptions(enabledModelIds),
     [enabledModelIds],
   );
   const defaultEnabledModelId = useMemo(
-    () => getDefaultEnabledModelId(enabledModelIds),
+    () => getWorkspaceDefaultEnabledModelId(enabledModelIds),
     [enabledModelIds],
   );
-  const selectedRun = runs.find((run) => run.id === selectedRunId) || runs[0] || null;
-  const normalizedCaseDraft = normalizeTestCase(caseDraft);
-  const normalizedPromptDraft = normalizePromptTemplate(promptDraft);
-  const caseDraftSignature = getTestCaseSignature(normalizedCaseDraft);
-  const promptDraftSignature = getPromptTemplateSignature(normalizedPromptDraft);
-  const playgroundMode = variants.length > 1 ? "compare" : "single";
-  const caseMatchesExisting = testCases.some((item) => getTestCaseSignature(item) === caseDraftSignature);
-  const promptMatchesExisting = promptTemplates.some(
-    (item) => getPromptTemplateSignature(item) === promptDraftSignature,
+  const selectedRun = useMemo(
+    () => getSelectedRun(runs, selectedRunId),
+    [runs, selectedRunId],
+  );
+  const normalizedCaseDraft = useMemo(() => normalizeTestCase(caseDraft), [caseDraft]);
+  const normalizedPromptDraft = useMemo(() => normalizePromptTemplate(promptDraft), [promptDraft]);
+  const caseDraftSignature = useMemo(() => getCaseDraftSignature(normalizedCaseDraft), [normalizedCaseDraft]);
+  const promptDraftSignature = useMemo(
+    () => getPromptDraftSignature(normalizedPromptDraft),
+    [normalizedPromptDraft],
+  );
+  const playgroundMode = useMemo(() => getPlaygroundMode(variants), [variants]);
+  const caseMatchesExisting = useMemo(
+    () => getCaseMatchesExisting(testCases, caseDraftSignature),
+    [testCases, caseDraftSignature],
+  );
+  const promptMatchesExisting = useMemo(
+    () => getPromptMatchesExisting(promptTemplates, promptDraftSignature),
+    [promptTemplates, promptDraftSignature],
+  );
+  const filteredRuns = useMemo(
+    () => getFilteredRuns(runs, deferredSearch),
+    [runs, deferredSearch],
   );
 
   useEffect(() => {
     async function loadAppData() {
       setLoading(true);
       try {
-        const payload = await readJson(await fetch("/api/bootstrap"));
+        const payload = await fetchBootstrap();
         const nextStorageMode = payload.storageMode || "local";
-        const nextAppSettingsStorageMode = payload.appSettingsStorageMode || (nextStorageMode === "supabase" ? "supabase" : "browser");
+        const nextAppSettingsStorageMode =
+          payload.appSettingsStorageMode || (nextStorageMode === "supabase" ? "supabase" : "browser");
         const nextWorkspaceSettingsStorageMode =
           payload.workspaceSettingsStorageMode || (nextStorageMode === "supabase" ? "supabase" : "browser");
         const serverAppSettings = normalizeAppSettings(payload.appSettings);
@@ -297,6 +296,7 @@ export function useWorkspaceState(defaultPage = "playground") {
           nextWorkspaceSettingsStorageMode === "supabase"
             ? serverWorkspaceSettings
             : readBrowserModelSettings(serverWorkspaceSettings);
+
         skipNextWorkspaceSaveRef.current = true;
         setTestCases(payload.testCases || []);
         setPromptTemplates(payload.promptTemplates || []);
@@ -325,7 +325,7 @@ export function useWorkspaceState(defaultPage = "playground") {
           setSelectedRunId((current) => current || payload.runs[0].id);
         }
       } catch (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(ensureErrorMessage(error, "Failed to load workspace."));
         workspaceSettingsReadyRef.current = true;
         setWorkspaceSaveState("Save unavailable");
       } finally {
@@ -333,13 +333,12 @@ export function useWorkspaceState(defaultPage = "playground") {
       }
     }
 
-    loadAppData();
+    void loadAppData();
   }, []);
 
   useEffect(() => {
-    const storedTheme =
-      typeof window !== "undefined" ? window.localStorage.getItem("dg-evals-theme") : null;
-    if (storedTheme === "dark" || storedTheme === "light") {
+    const storedTheme = readStoredTheme();
+    if (storedTheme) {
       setTheme(storedTheme);
       applyThemePreference(storedTheme);
     }
@@ -367,7 +366,7 @@ export function useWorkspaceState(defaultPage = "playground") {
       return;
     }
 
-    const firstPromptId = promptTemplates[0].id;
+    const firstPromptId = promptTemplates[0]?.id;
     if (!firstPromptId) {
       return;
     }
@@ -398,40 +397,42 @@ export function useWorkspaceState(defaultPage = "playground") {
       return undefined;
     }
 
-    setWorkspaceSaveState("Saving...");
-    window.clearTimeout(workspaceSaveTimerRef.current);
-    workspaceSaveTimerRef.current = window.setTimeout(async () => {
-      const nextAppSettings = {
-        activeTab: activePage,
-        playgroundMode,
-        caseDraft,
-        promptDraft,
-        generationSettings,
-        variants,
-        batchSelection,
-        importedCases,
-      };
+    const snapshot = createWorkspaceSnapshot({
+      activePage,
+      playgroundMode,
+      caseDraft,
+      promptDraft,
+      generationSettings,
+      variants,
+      batchSelection,
+      importedCases,
+    });
 
+    setWorkspaceSaveState("Saving...");
+    if (workspaceSaveTimerRef.current !== null) {
+      window.clearTimeout(workspaceSaveTimerRef.current);
+    }
+    workspaceSaveTimerRef.current = window.setTimeout(async () => {
       if (appSettingsStorageMode !== "supabase") {
-        writeBrowserAppSettings(nextAppSettings);
+        writeBrowserAppSettings(snapshot);
       }
 
       try {
-        await readJson(
-          await fetch("/api/app-settings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(nextAppSettings),
-          }),
-        );
+        await saveAppSettingsRequest(snapshot);
         setWorkspaceSaveState(appSettingsStorageMode === "supabase" ? "Saved" : "Saved in browser");
       } catch (error) {
         console.error("Failed to save workspace settings.", error);
-        setWorkspaceSaveState(appSettingsStorageMode === "supabase" ? "Save failed" : "Saved in browser");
+        setWorkspaceSaveState(
+          appSettingsStorageMode === "supabase" ? "Save failed" : "Saved in browser",
+        );
       }
     }, 300);
 
-    return () => window.clearTimeout(workspaceSaveTimerRef.current);
+    return () => {
+      if (workspaceSaveTimerRef.current !== null) {
+        window.clearTimeout(workspaceSaveTimerRef.current);
+      }
+    };
   }, [
     activePage,
     appSettingsStorageMode,
@@ -444,29 +445,12 @@ export function useWorkspaceState(defaultPage = "playground") {
     importedCases,
   ]);
 
-  const filteredRuns = runs.filter((run) => {
-    if (!deferredSearch.trim()) {
-      return true;
-    }
-    const haystack = [
-      run.id,
-      run.label,
-      run.mode,
-      ...(run.results || []).map(
-        (result) => `${result.id} ${result.caseName} ${result.model} ${result.variantLabel}`,
-      ),
-    ]
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(deferredSearch.toLowerCase());
-  });
-
   function clearMessages() {
     setStatusMessage("");
     setErrorMessage("");
   }
 
-  function dismissMessage(kind) {
+  function dismissMessage(kind: "error" | "success") {
     if (kind === "error") {
       setErrorMessage("");
       return;
@@ -476,31 +460,25 @@ export function useWorkspaceState(defaultPage = "playground") {
 
   function toggleTheme() {
     setTheme((current) => {
-      const nextTheme = current === "dark" ? "light" : "dark";
+      const nextTheme: Theme = current === "dark" ? "light" : "dark";
       applyThemePreference(nextTheme);
-      window.localStorage.setItem("dg-evals-theme", nextTheme);
+      writeStoredTheme(nextTheme);
       return nextTheme;
     });
   }
 
-  async function handleSaveCase(singleCase) {
+  async function handleSaveCase(singleCase: TestCase) {
     clearMessages();
     try {
       const payloadCase = {
         ...normalizeTestCase(singleCase),
         id: null,
       };
-      const payload = await readJson(
-        await fetch("/api/test-cases", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entries: payloadCase }),
-        }),
-      );
+      const payload = await saveTestCasesRequest(payloadCase);
       setTestCases(payload.testCases || []);
       setStatusMessage("Saved test case library.");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to save test case."));
     }
   }
 
@@ -510,39 +488,27 @@ export function useWorkspaceState(defaultPage = "playground") {
     }
     clearMessages();
     try {
-      const payload = await readJson(
-        await fetch("/api/test-cases", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entries: importedCases }),
-        }),
-      );
+      const payload = await saveTestCasesRequest(importedCases);
       setTestCases(payload.testCases || []);
       setImportedCases([]);
       setStatusMessage("Imported cases were saved to the library.");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to save imported cases."));
     }
   }
 
   async function handleSavePrompt() {
     clearMessages();
     try {
-      const payloadPrompt = {
+      const payloadPrompt: PromptTemplate = {
         ...normalizedPromptDraft,
         id: null,
       };
-      const payload = await readJson(
-        await fetch("/api/prompt-templates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payloadPrompt),
-        }),
-      );
+      const payload = await savePromptTemplateRequest(payloadPrompt);
       setPromptTemplates(payload.promptTemplates || []);
       setStatusMessage("Saved prompt template.");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to save prompt template."));
     }
   }
 
@@ -553,33 +519,27 @@ export function useWorkspaceState(defaultPage = "playground") {
     clearMessages();
     setPlaygroundGenerating(true);
     try {
-      const payload = await readJson(
-        await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: playgroundMode,
-            caseInput: caseDraft,
-            promptDraft,
-            generationSettings,
-            settings,
-            variants,
-          }),
-        }),
-      );
+      const payload = await generateRunRequest({
+        mode: playgroundMode,
+        caseInput: caseDraft,
+        promptDraft,
+        generationSettings,
+        settings,
+        variants,
+      });
       setPlaygroundRun(payload.run);
-      setRuns((current) => [payload.run, ...current.filter((item) => item.id !== payload.run.id)]);
+      setRuns((current) => updateRunCollection(payload.run, current));
       setSelectedRunId(payload.run.id);
       startTransition(() => setActivePage("history"));
     } catch (error) {
       setPlaygroundRun(null);
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to generate run."));
     } finally {
       setPlaygroundGenerating(false);
     }
   }
 
-  async function handleBatchRun(options = {}) {
+  async function handleBatchRun(options: HandleBatchRunOptions = {}) {
     clearMessages();
     setBatchGenerating(true);
     try {
@@ -599,21 +559,14 @@ export function useWorkspaceState(defaultPage = "playground") {
 
       let sampledCount = 0;
       let requestedSampleCount = 0;
-      let sampledSourceCases = [];
+      let sampledSourceCases: TestCase[] = [];
 
       if (includeSourcePool && (Number(batchSampleCount) || 0) > 0) {
         requestedSampleCount = Number(batchSampleCount) || 0;
-        const samplePayload = await readJson(
-          await fetch("/api/source-pool", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "sample",
-              count: requestedSampleCount,
-              verificationFilter: batchVerificationFilter,
-            }),
-          }),
-        );
+        const samplePayload = await sampleSourcePoolRequest({
+          count: requestedSampleCount,
+          verificationFilter: batchVerificationFilter,
+        });
 
         sampledCount = samplePayload.actualCount || 0;
         sampledSourceCases = (samplePayload.rows || []).map((row) =>
@@ -638,21 +591,15 @@ export function useWorkspaceState(defaultPage = "playground") {
         ...sampledSourceCases,
       ];
 
-      const payload = await readJson(
-        await fetch("/api/batch-runs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            caseIds: selectedCaseIds,
-            inlineCases,
-            promptDraft,
-            generationSettings,
-            settings,
-            variants,
-          }),
-        }),
-      );
-      setRuns((current) => [payload.run, ...current.filter((item) => item.id !== payload.run.id)]);
+      const payload = await batchRunRequest({
+        caseIds: selectedCaseIds,
+        inlineCases,
+        promptDraft,
+        generationSettings,
+        settings,
+        variants,
+      });
+      setRuns((current) => updateRunCollection(payload.run, current));
       setSelectedRunId(payload.run.id);
       startTransition(() => setActivePage("history"));
       if (requestedSampleCount && sampledCount !== requestedSampleCount) {
@@ -663,13 +610,13 @@ export function useWorkspaceState(defaultPage = "playground") {
         setStatusMessage("Batch run completed.");
       }
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to run batch."));
     } finally {
       setBatchGenerating(false);
     }
   }
 
-  async function handleImportSourcePool(file) {
+  async function handleImportSourcePool(file: File | null) {
     if (!file) {
       return;
     }
@@ -685,22 +632,11 @@ export function useWorkspaceState(defaultPage = "playground") {
 
       let aggregateImportedCount = 0;
       let aggregateSkippedCount = 0;
-      let latestStats = { total: 0, verified: 0, unverified: 0 };
+      let latestStats: SourcePoolStats = { total: 0, verified: 0, unverified: 0 };
 
       for (let index = 0; index < records.length; index += SOURCE_POOL_IMPORT_CHUNK_SIZE) {
         const chunk = records.slice(index, index + SOURCE_POOL_IMPORT_CHUNK_SIZE);
-        const payload = await readJson(
-          await fetch("/api/source-pool", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "import",
-              entries: chunk,
-              replace: index === 0,
-            }),
-          }),
-        );
-
+        const payload = await importSourcePoolChunkRequest(chunk, index === 0);
         aggregateImportedCount += payload.importedCount || 0;
         aggregateSkippedCount += payload.skippedCount || 0;
         latestStats = payload.stats || latestStats;
@@ -711,7 +647,7 @@ export function useWorkspaceState(defaultPage = "playground") {
         `Imported ${aggregateImportedCount} source rows${aggregateSkippedCount ? ` and skipped ${aggregateSkippedCount}` : ""}.`,
       );
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to import source pool."));
     } finally {
       setSourcePoolImporting(false);
     }
@@ -721,14 +657,7 @@ export function useWorkspaceState(defaultPage = "playground") {
     clearMessages();
     setPlaygroundRandomizing(true);
     try {
-      const payload = await readJson(
-        await fetch("/api/source-pool", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "random", verificationFilter: "any" }),
-        }),
-      );
-
+      const payload = await randomSourcePoolRowRequest("any");
       if (!payload.row) {
         throw new Error("No source-pool rows available. Upload a source CSV first.");
       }
@@ -736,20 +665,20 @@ export function useWorkspaceState(defaultPage = "playground") {
       setCaseDraft((current) =>
         normalizeTestCase({
           ...current,
-          sourceRecordId: payload.row.id,
+          sourceRecordId: payload.row?.id,
           sourceType: "source_pool",
-          organizationUuid: payload.row.organizationUuid,
-          isVerified: payload.row.isVerified,
-          organizationName: payload.row.organizationName,
-          teamName: payload.row.teamName,
-          organizationType: payload.row.organizationType,
-          teamActivity: payload.row.teamActivity,
-          teamAffiliation: payload.row.teamAffiliation,
+          organizationUuid: payload.row?.organizationUuid,
+          isVerified: payload.row?.isVerified,
+          organizationName: payload.row?.organizationName,
+          teamName: payload.row?.teamName,
+          organizationType: payload.row?.organizationType,
+          teamActivity: payload.row?.teamActivity,
+          teamAffiliation: payload.row?.teamAffiliation,
           causeTags: current.causeTags,
         }),
       );
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to randomize case."));
     } finally {
       setPlaygroundRandomizing(false);
     }
@@ -763,66 +692,42 @@ export function useWorkspaceState(defaultPage = "playground") {
     }));
   }
 
-  async function handleSaveRating(payload) {
+  async function handleSaveRating(payload: SaveRatingRequest) {
     clearMessages();
-    const response = await readJson(
-      await fetch("/api/ratings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }),
-    );
+    const response = await saveRatingRequest(payload);
     setRuns((current) => current.map((run) => (run.id === response.run.id ? response.run : run)));
     setSelectedRunId(response.run.id);
     setStatusMessage("Saved rating.");
   }
 
-  async function handleDeleteCase(id) {
+  async function handleDeleteCase(id: string) {
     clearMessages();
     try {
-      const payload = await readJson(
-        await fetch("/api/test-cases", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        }),
-      );
+      const payload = await deleteTestCaseRequest(id);
       setTestCases(payload.testCases || []);
       setStatusMessage("Deleted saved case.");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete case."));
     }
   }
 
-  async function handleDeletePrompt(id) {
+  async function handleDeletePrompt(id: string) {
     clearMessages();
     try {
-      const payload = await readJson(
-        await fetch("/api/prompt-templates", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        }),
-      );
+      const payload = await deletePromptTemplateRequest(id);
       setPromptTemplates(payload.promptTemplates || []);
       setStatusMessage("Deleted saved recipe.");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete prompt."));
     }
   }
 
-  async function handleSaveSettings(nextSettings) {
+  async function handleSaveSettings(nextSettings: Partial<WorkspaceSettings>) {
     clearMessages();
     const sanitizedEnabledModelIds = filterEnabledModelIds(nextSettings?.enabledModelIds);
 
     try {
-      const payload = await readJson(
-        await fetch("/api/settings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabledModelIds: sanitizedEnabledModelIds }),
-        }),
-      );
+      const payload = await saveWorkspaceSettingsRequest({ enabledModelIds: sanitizedEnabledModelIds });
       const nextSavedSettings = {
         enabledModelIds: normalizeEnabledModelIds(payload.settings?.enabledModelIds),
       };
@@ -830,7 +735,9 @@ export function useWorkspaceState(defaultPage = "playground") {
         writeBrowserModelSettings(nextSavedSettings);
       }
       setSettings(nextSavedSettings);
-      setStatusMessage(workspaceSettingsStorageMode === "supabase" ? "Settings saved." : "Settings saved in browser.");
+      setStatusMessage(
+        workspaceSettingsStorageMode === "supabase" ? "Settings saved." : "Settings saved in browser.",
+      );
     } catch (error) {
       if (workspaceSettingsStorageMode !== "supabase") {
         const nextSavedSettings = {
@@ -841,11 +748,11 @@ export function useWorkspaceState(defaultPage = "playground") {
         setStatusMessage("Settings saved in browser.");
         return;
       }
-      setErrorMessage(error.message);
+      setErrorMessage(ensureErrorMessage(error, "Failed to save settings."));
     }
   }
 
-  function updateVariant(id, patch) {
+  function updateVariant(id: string, patch: Partial<Variant>) {
     setVariants((current) =>
       current.map((variant) => (variant.id === id ? { ...variant, ...patch } : variant)),
     );
@@ -888,7 +795,7 @@ export function useWorkspaceState(defaultPage = "playground") {
     setActivePage,
     setBatchSelection,
     setBatchSampleCount,
-    setBatchVerificationFilter,
+    setBatchVerificationFilter: setBatchVerificationFilter as Dispatch<SetStateAction<string>>,
     setCaseDraft,
     setGenerationSettings,
     setHistorySearch,
@@ -911,7 +818,7 @@ export function useWorkspaceState(defaultPage = "playground") {
     playgroundMode,
     enabledModelIds,
     defaultEnabledModelId,
-    causeTagOptions: CAUSE_TAG_OPTIONS,
+    causeTagOptions: [...CAUSE_TAG_OPTIONS],
     canSaveCase: !caseMatchesExisting,
     canSavePrompt: !promptMatchesExisting,
     dismissMessage,

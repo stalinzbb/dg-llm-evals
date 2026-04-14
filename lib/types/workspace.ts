@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   GenerationSettings,
   ModelOption,
   PlatformStatus,
@@ -11,6 +12,26 @@ import type {
   WorkspacePage,
   WorkspaceSettings,
 } from "@/lib/types/domain";
+import type { SaveRatingRequest } from "@/lib/types/api";
+
+export interface WorkspaceSnapshot extends AppSettings {}
+
+export interface HandleBatchRunOptions {
+  includeSavedCases?: boolean;
+  includeImportedCases?: boolean;
+  includeSourcePool?: boolean;
+}
+
+export interface WorkspaceDerivedState {
+  availableModelOptions: ModelOption[];
+  canSaveCase: boolean;
+  canSavePrompt: boolean;
+  defaultEnabledModelId: string;
+  enabledModelIds: string[];
+  filteredRuns: Run[];
+  playgroundMode: "single" | "compare";
+  selectedRun: Run | null;
+}
 
 export interface WorkspaceState {
   activePage: WorkspacePage;
@@ -24,7 +45,7 @@ export interface WorkspaceState {
   caseDraft: TestCase;
   causeTagOptions: string[];
   defaultEnabledModelId: string;
-  dismissMessage: () => void;
+  dismissMessage: (kind: "error" | "success") => void;
   enabledModelIds: string[];
   errorMessage: string;
   filteredRuns: Run[];
@@ -40,10 +61,10 @@ export interface WorkspaceState {
   handleImportSourcePool: (file: File | null) => Promise<void>;
   handleRandomizeCaseFromSourcePool: () => Promise<void>;
   handleRandomizeCauseTags: () => void;
-  handleSaveCase: () => Promise<void>;
+  handleSaveCase: (singleCase: TestCase) => Promise<void>;
   handleSaveImportedCases: () => Promise<void>;
   handleSavePrompt: () => Promise<void>;
-  handleSaveRating: (payload: Record<string, unknown>) => Promise<void>;
+  handleSaveRating: (payload: SaveRatingRequest) => Promise<void>;
   handleSaveSettings: (settings: Partial<WorkspaceSettings>) => Promise<void>;
   historySearch: string;
   importedCases: TestCase[];
