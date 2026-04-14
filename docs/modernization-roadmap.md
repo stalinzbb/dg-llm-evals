@@ -8,11 +8,11 @@ The sequencing is intentional:
 
 1. Introduce TypeScript and shared domain/API types.
 2. Extract state management and data-fetching boundaries.
-3. Break up `workspace-sections.js`.
+3. Break up the workspace sections monolith.
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 3**
+Current overall phase: **Phase 4**
 
 ## Phase Summary
 
@@ -20,7 +20,7 @@ Current overall phase: **Phase 3**
 | --- | --- | --- | --- | --- |
 | Phase 1: TypeScript and shared contracts | Done | Add compiler safety and canonical shared types | None | TS config exists, shared types exist, workspace/domain path compiles, roadmap updated |
 | Phase 2: State and data boundaries | Done | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
-| Phase 3: Break up `workspace-sections.js` | Not started | Split the monolith into feature-scoped components | Phase 2 | Feature sections consume explicit typed props instead of a broad workspace contract |
+| Phase 3: Break up `workspace-sections.js` | Done | Split the monolith into feature-scoped components | Phase 2 | Feature sections consume explicit typed props instead of a broad workspace contract |
 | Phase 4: Design system unification | Not started | Remove CSS Modules and standardize Tailwind/shadcn/ui usage | Phase 3 | No active CSS Module dependencies remain |
 | Phase 5: App Router migration | Not started | Move to `app/` after architecture and UI are stable | Phase 4 | Main flows run under App Router with behavior parity |
 
@@ -74,13 +74,13 @@ Current overall phase: **Phase 3**
 - Two CSS Modules remain: `components/drawer-shell.module.css` and `components/library-drawer.module.css`.
 - The safest Phase 1 approach was to type the large JS workspace modules via explicit declaration contracts while converting the smaller pure domain/orchestration modules to `.ts`.
 - Next.js automatically updated `tsconfig.json` to use `jsx: react-jsx`.
-- `lib/workspace.js` was replaced in Phase 2 with a real typed `lib/workspace.ts`; `components/workspace-sections.js` remains structurally intact for Phase 3.
+- `lib/workspace.js` was replaced in Phase 2 with a real typed `lib/workspace.ts`; `components/workspace-sections.js` was intentionally deferred to Phase 3.
 
 **Carry-forward risks**
 
 - The current workspace object is still broad even after typing; narrowing it further should happen in Phase 2.
 - Store payload shapes are partially inferred from persistence adapters and may need normalization cleanup once Phase 2 starts.
-- `components/workspace-sections.js` still remains as a large JS implementation and will be the main structural target for Phase 3.
+- `components/workspace-sections.js` was still a large JS implementation at the end of Phase 1 and became the main structural target for Phase 3.
 
 **Next session start point**
 
@@ -125,8 +125,8 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 **Discovered during execution**
 
 - The most effective first Phase 2 cut was not a state-library change; it was separating browser persistence, API access, and derived selectors from the hook.
-- The `workspace` return surface is still broad because `workspace-sections.js` still consumes a large combined contract.
-- Direct UI splitting is still premature until per-feature view models are introduced in front of `workspace-sections.js`.
+- The `workspace` return surface is still broad internally even though Phase 2 introduced narrower view models for the UI.
+- Direct UI splitting should wait until per-feature view models exist in front of the section components.
 - Per-feature typed adapters now sit between `useWorkspaceState` and the section entry points, so pages no longer spread the full workspace bag directly into every section.
 - The main workspace hook now delegates user operations to a dedicated typed action module, leaving the hook focused on state, effects, and composition.
 - Shared workspace stats, source-pool summaries, and settings model-availability state now come from typed selectors instead of inline UI calculations.
@@ -143,7 +143,7 @@ Read this document, then start Phase 3 with the playground section while keeping
 
 ## Phase 3
 
-**Status:** Not started
+**Status:** Done
 
 **Objective:** Break up `workspace-sections.js` into typed, feature-scoped components after the workspace contract is stable.
 
@@ -167,21 +167,22 @@ Read this document, then start Phase 3 with the playground section while keeping
 
 **Checklist**
 
-- [ ] Create feature containers
-- [ ] Extract shared primitives only where reuse is real
-- [ ] Delete or retire the monolithic section file
+- [x] Create feature containers
+- [x] Extract shared primitives only where reuse is real
+- [x] Delete or retire the monolithic section file
 
 **Discovered during execution**
 
-- None yet.
+- The existing typed view-model layer from Phase 2 was sufficient for the split, so no additional workspace contract work was needed before extraction.
+- A small shared primitives/helpers layer was enough; most of the previous file content was feature-local and did not need further abstraction.
 
 **Carry-forward risks**
 
-- None yet.
+- Manual QA across playground, batches, history, and settings is still recommended because this phase was primarily structural and verified by lint/typecheck rather than full browser interaction.
 
 **Next session start point**
 
-Start with the playground section after Phase 2 boundaries are in place.
+Start Phase 4 by replacing the remaining CSS Modules and consolidating the section styling approach around Tailwind/shadcn primitives.
 
 ## Phase 4
 
@@ -272,21 +273,22 @@ Begin only after Phases 1 through 4 are complete.
 - 2026-04-14: State and data boundaries come before breaking up `workspace-sections.js`.
 - 2026-04-14: App Router migration remains last to avoid combining framework migration with architecture and styling changes.
 - 2026-04-14: Phase 2 will use extracted browser/API/selector modules before considering any external state library.
+- 2026-04-14: Phase 3 should keep only a minimal shared section-primitives layer and otherwise split by feature file.
 
 ## Discovered Issues
 
 - The app is still on the Pages Router.
-- `components/workspace-sections.js` is a monolithic file that exports multiple feature sections.
+- Manual browser QA still has not been rerun after the Phase 3 section split.
 - `lib/workspace.js` mixes UI state, network requests, persistence, and derived data.
 - Two CSS Modules remain in active use.
 
 ## Session Handoff
 
 - Read this file first in every future session.
-- Verified in this session: `npm run typecheck`, `npm run lint`, and `npm run build` all succeeded after the Phase 2 extraction.
+- Verified in this session: `npm run typecheck` and `npm run lint` succeeded after the Phase 3 split.
 - Phase 1 is complete from a compiler and contract perspective. Manual UI QA remains a recommended regression check, but it no longer blocks the architecture sequence.
-- Phase 2 progress in this session: browser persistence/theme helpers, typed API client helpers, and selectors were extracted, and `lib/workspace.ts` now consumes those modules.
-- Next recommended task: either finish Phase 2 with per-feature view models or begin Phase 3 by splitting `workspace-sections.js` behind the current workspace contract.
+- Phase 3 progress in this session: `components/workspace-sections.js` was replaced by feature-scoped files under `components/workspace-sections/` plus a small shared primitives/helpers layer.
+- Next recommended task: begin Phase 4 by removing `drawer-shell.module.css` and `library-drawer.module.css`, then standardize the remaining workspace styling patterns.
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
@@ -294,3 +296,4 @@ Begin only after Phases 1 through 4 are complete.
 - 2026-04-14: Roadmap document created and Phase 1 started.
 - 2026-04-14: Added TypeScript infrastructure, shared domain/API/workspace contracts, converted smaller domain modules plus store/runner/API boundaries to TypeScript, and verified typecheck/lint/build.
 - 2026-04-14: Extracted browser persistence, API client, and selector boundaries from `lib/workspace`, and replaced the old workspace JS implementation with typed `lib/workspace.ts`.
+- 2026-04-14: Split `components/workspace-sections.js` into feature-scoped files with explicit typed props, added shared section primitives/helpers, and removed the monolithic section module.
