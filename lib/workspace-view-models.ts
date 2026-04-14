@@ -4,22 +4,19 @@ import type {
   PlaygroundSectionProps,
   SettingsSectionProps,
   WorkspaceState,
-  WorkspaceStatItem,
   WorkspaceStatusViewModel,
 } from "@/lib/types/workspace";
+import { getWorkspaceStatItems } from "@/lib/workspace-selectors";
 
-export function getWorkspaceStatItems(workspace: WorkspaceState): WorkspaceStatItem[] {
-  return [
-    {
-      label: "Generation",
-      value: workspace.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
-    },
-    { label: "Cases", value: workspace.testCases.length },
-    { label: "Prompts", value: workspace.promptTemplates.length },
-    { label: "Runs", value: workspace.runs.length },
-    { label: "Source pool", value: workspace.sourcePoolStats.total },
-    { label: "Workspace", value: workspace.workspaceSaveState },
-  ];
+export function getWorkspaceStatsViewModel(workspace: WorkspaceState) {
+  return getWorkspaceStatItems({
+    platformStatus: workspace.platformStatus,
+    promptTemplateCount: workspace.promptTemplates.length,
+    runCount: workspace.runs.length,
+    sourcePoolStats: workspace.sourcePoolStats,
+    testCaseCount: workspace.testCases.length,
+    workspaceSaveState: workspace.workspaceSaveState,
+  });
 }
 
 export function getWorkspaceStatusViewModel(workspace: WorkspaceState): WorkspaceStatusViewModel {

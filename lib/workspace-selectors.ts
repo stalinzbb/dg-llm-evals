@@ -1,12 +1,15 @@
-import { getEnabledModelOptions, getDefaultEnabledModelId } from "@/lib/constants";
+import { MODEL_OPTIONS, getDefaultEnabledModelId, getEnabledModelOptions } from "@/lib/constants";
 import { getPromptTemplateSignature, getTestCaseSignature, normalizePromptTemplate, normalizeTestCase } from "@/lib/prompt";
 import type {
   ModelOption,
+  PlatformStatus,
   PromptTemplate,
   Run,
+  SourcePoolStats,
   TestCase,
   Variant,
 } from "@/lib/types/domain";
+import type { WorkspaceStatItem } from "@/lib/types/workspace";
 
 export function getAvailableModelOptions(enabledModelIds: string[]): ModelOption[] {
   return getEnabledModelOptions(enabledModelIds);
@@ -59,4 +62,58 @@ export function getCaseMatchesExisting(testCases: TestCase[], signature: string)
 
 export function getPromptMatchesExisting(promptTemplates: PromptTemplate[], signature: string): boolean {
   return promptTemplates.some((item) => getPromptTemplateSignature(item) === signature);
+}
+
+export function getWorkspaceStatItems(args: {
+  platformStatus: PlatformStatus;
+  promptTemplateCount: number;
+  runCount: number;
+  sourcePoolStats: SourcePoolStats;
+  testCaseCount: number;
+  workspaceSaveState: string;
+}): WorkspaceStatItem[] {
+  return [
+    {
+      label: "Generation",
+      value: args.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
+    },
+    { label: "Cases", value: args.testCaseCount },
+    { label: "Prompts", value: args.promptTemplateCount },
+    { label: "Runs", value: args.runCount },
+    { label: "Source pool", value: args.sourcePoolStats.total },
+    { label: "Workspace", value: args.workspaceSaveState },
+  ];
+}
+
+export function getSourcePoolSummary(sourcePoolStats: SourcePoolStats): string {
+  return `Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`;
+}
+
+export function sanitizeModelConfigurationIds(value: unknown): string[] {
+  const runnableModelIds = MODEL_OPTIONS.filter((model) => !model.unavailable).map(
+    (model) => model.value,
+  );
+  const ids = Array.isArray(value) ? value : [];
+  return ids.filter(
+    (id, index) =>
+      typeof id === "string" && runnableModelIds.includes(id) && ids.indexOf(id) === index,
+  );
+}
+
+export function getModelConfigurationState(
+  draftEnabledModelIds: string[],
+  enabledModelIds: string[],
+): {
+  enabledRunnableCount: number;
+  hasChanges: boolean;
+  selectedEnabledIds: string[];
+} {
+  const selectedEnabledIds = sanitizeModelConfigurationIds(draftEnabledModelIds);
+  const persistedEnabledIds = sanitizeModelConfigurationIds(enabledModelIds);
+
+  return {
+    enabledRunnableCount: selectedEnabledIds.length,
+    hasChanges: JSON.stringify(selectedEnabledIds) !== JSON.stringify(persistedEnabledIds),
+    selectedEnabledIds,
+  };
 }

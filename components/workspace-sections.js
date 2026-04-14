@@ -45,6 +45,11 @@ import {
   getTeamAffiliationConfig,
   normalizeTaxonomySelection,
 } from "@/lib/taxonomy";
+import {
+  getModelConfigurationState,
+  getSourcePoolSummary,
+  sanitizeModelConfigurationIds,
+} from "@/lib/workspace-selectors";
 
 const HELP_TEXT = {
   temperature:
@@ -99,17 +104,6 @@ function clampIntegerInput(value) {
     return sanitized;
   }
   return value.slice(0, -1);
-}
-
-function sanitizeModelConfigurationIds(value) {
-  const runnableModelIds = MODEL_OPTIONS.filter((model) => !model.unavailable).map(
-    (model) => model.value,
-  );
-  const ids = Array.isArray(value) ? value : [];
-  return ids.filter(
-    (id, index) =>
-      typeof id === "string" && runnableModelIds.includes(id) && ids.indexOf(id) === index,
-  );
 }
 
 function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
@@ -992,6 +986,7 @@ export function BatchSection(workspace) {
     updateVariant,
     variants,
   } = workspace;
+  const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
 
   return (
     <>
@@ -1179,7 +1174,7 @@ export function BatchSection(workspace) {
                   {batchGenerating ? "Running…" : "Run"}
                 </Button>
               }
-              subtitle={`Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`}
+              subtitle={sourcePoolSummary}
               title="Source Pool"
             />
 
@@ -1492,11 +1487,11 @@ export function SettingsSection(workspace) {
     setDraftEnabledModelIds(sanitizeModelConfigurationIds(enabledModelIds));
   }, [enabledModelIds]);
 
-  const selectedEnabledIds = sanitizeModelConfigurationIds(draftEnabledModelIds);
-  const hasChanges =
-    JSON.stringify(selectedEnabledIds) !==
-    JSON.stringify(sanitizeModelConfigurationIds(enabledModelIds));
-  const enabledRunnableCount = selectedEnabledIds.length;
+  const { enabledRunnableCount, hasChanges, selectedEnabledIds } = getModelConfigurationState(
+    draftEnabledModelIds,
+    enabledModelIds,
+  );
+  const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
 
   function handleModelToggle(modelValue, checked) {
     setDraftEnabledModelIds((current) => {
@@ -1582,7 +1577,7 @@ export function SettingsSection(workspace) {
 
         <SectionCard>
           <SectionHead
-            subtitle={`Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`}
+            subtitle={sourcePoolSummary}
             title="Source Pool Management"
           />
           <p className="text-xs text-muted-foreground">

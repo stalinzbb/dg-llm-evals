@@ -12,14 +12,14 @@ The sequencing is intentional:
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 2**
+Current overall phase: **Phase 3**
 
 ## Phase Summary
 
 | Phase | Status | Objective | Depends On | Exit Criteria |
 | --- | --- | --- | --- | --- |
 | Phase 1: TypeScript and shared contracts | Done | Add compiler safety and canonical shared types | None | TS config exists, shared types exist, workspace/domain path compiles, roadmap updated |
-| Phase 2: State and data boundaries | In progress | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
+| Phase 2: State and data boundaries | Done | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
 | Phase 3: Break up `workspace-sections.js` | Not started | Split the monolith into feature-scoped components | Phase 2 | Feature sections consume explicit typed props instead of a broad workspace contract |
 | Phase 4: Design system unification | Not started | Remove CSS Modules and standardize Tailwind/shadcn/ui usage | Phase 3 | No active CSS Module dependencies remain |
 | Phase 5: App Router migration | Not started | Move to `app/` after architecture and UI are stable | Phase 4 | Main flows run under App Router with behavior parity |
@@ -88,7 +88,7 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 
 ## Phase 2
 
-**Status:** In progress
+**Status:** Done
 
 **Objective:** Extract state, data fetching, persistence, and derived selectors out of the workspace UI surface.
 
@@ -113,9 +113,9 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 
 **Checklist**
 
-- [ ] Extract fetch and persistence helpers from `lib/workspace`
+- [x] Extract fetch and persistence helpers from `lib/workspace`
 - [x] Create typed action layer for user operations
-- [ ] Create typed selectors for history, counts, and model availability
+- [x] Create typed selectors for history, counts, and model availability
 - [x] Narrow feature view-model contracts
 - [x] Extract typed browser persistence and theme helpers from `lib/workspace`
 - [x] Extract typed API client helpers from `lib/workspace`
@@ -129,16 +129,17 @@ Run manual QA on the main workspace flows as a carry-forward verification task, 
 - Direct UI splitting is still premature until per-feature view models are introduced in front of `workspace-sections.js`.
 - Per-feature typed adapters now sit between `useWorkspaceState` and the section entry points, so pages no longer spread the full workspace bag directly into every section.
 - The main workspace hook now delegates user operations to a dedicated typed action module, leaving the hook focused on state, effects, and composition.
+- Shared workspace stats, source-pool summaries, and settings model-availability state now come from typed selectors instead of inline UI calculations.
 
 **Carry-forward risks**
 
-- `useWorkspaceState` is now better bounded, but it still coordinates many feature actions in one hook.
+- `useWorkspaceState` is now better bounded, but it still coordinates feature state for all sections in one hook.
 - `components/workspace-sections.js` still contains multiple features in one file even though its public entry contracts are now narrowed per feature.
 - Manual UI regression coverage is still needed because the Phase 2 refactor preserved behavior by structure, not by automated UI tests.
 
 **Next session start point**
 
-Read this document, then decide whether to finish Phase 2 by extracting the remaining shared selectors for counts/model availability and performing manual workspace QA, or move to Phase 3 if the current hook boundaries are sufficient.
+Read this document, then start Phase 3 with the playground section while keeping manual workspace QA on the near-term verification list.
 
 ## Phase 3
 

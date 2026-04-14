@@ -9,7 +9,7 @@ import {
   getBatchSectionProps,
   getHistorySectionProps,
   getPlaygroundSectionProps,
-  getWorkspaceStatItems,
+  getWorkspaceStatsViewModel,
   getWorkspaceStatusViewModel,
 } from "@/lib/workspace-view-models";
 import type { WorkspacePage } from "@/lib/types/domain";
@@ -36,7 +36,7 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
   const activePage = normalizeWorkspacePage(workspace.activePage);
   const queryTab = getInitialWorkspaceTab(router.query.tab);
   const workspaceStatus = getWorkspaceStatusViewModel(workspace);
-  const stats = getWorkspaceStatItems(workspace);
+  const stats = getWorkspaceStatsViewModel(workspace);
   const playgroundSection = getPlaygroundSectionProps(workspace);
   const batchSection = getBatchSectionProps(workspace);
   const historySection = getHistorySectionProps(workspace);
