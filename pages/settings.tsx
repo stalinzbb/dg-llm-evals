@@ -4,14 +4,14 @@ import WorkspaceStatus from "@/components/workspace-status";
 import { useWorkspaceState } from "@/lib/workspace";
 import {
   getSettingsSectionProps,
-  getWorkspaceStatItems,
+  getWorkspaceStatsViewModel,
   getWorkspaceStatusViewModel,
 } from "@/lib/workspace-view-models";
 
 export default function SettingsPage() {
   const workspace = useWorkspaceState("settings");
   const workspaceStatus = getWorkspaceStatusViewModel(workspace);
-  const stats = getWorkspaceStatItems(workspace);
+  const stats = getWorkspaceStatsViewModel(workspace);
   const settingsSection = getSettingsSectionProps(workspace);
 
   return (
