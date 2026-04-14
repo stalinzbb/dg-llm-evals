@@ -1,4 +1,4 @@
-export { PlaygroundSection } from "./playground-section";
-export { BatchSection } from "./batch-section";
-export { HistorySection } from "./history-section";
-export { SettingsSection } from "./settings-section";
+export { PlaygroundSection } from "./playground";
+export { BatchSection } from "./batches";
+export { HistorySection } from "./history";
+export { SettingsSection } from "./settings";

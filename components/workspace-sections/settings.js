@@ -21,7 +21,7 @@ import {
   sanitizeModelConfigurationIds,
 } from "@/lib/workspace-selectors";
 
-import { SectionCard, SectionHead } from "./primitives";
+import { SectionCard, SectionHead } from "./section-primitives";
 
 export function SettingsSection({
   enabledModelIds,

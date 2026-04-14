@@ -38,13 +38,13 @@ import {
   SectionHead,
   SubSection,
   TextAreaField,
-} from "./primitives";
+} from "./section-primitives";
 import {
   clampDecimalInput,
   clampIntegerInput,
   getAffiliationSelectValue,
   HELP_TEXT,
-} from "./shared";
+} from "./section-helpers";
 
 export function PlaygroundSection({
   availableModelOptions,

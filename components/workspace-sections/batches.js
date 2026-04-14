@@ -32,7 +32,7 @@ import {
   SectionCard,
   SectionHead,
   SubSection,
-} from "./primitives";
+} from "./section-primitives";
 
 export function BatchSection({
   availableModelOptions,

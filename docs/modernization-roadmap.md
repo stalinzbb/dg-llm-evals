@@ -175,6 +175,7 @@ Read this document, then start Phase 3 with the playground section while keeping
 
 - The existing typed view-model layer from Phase 2 was sufficient for the split, so no additional workspace contract work was needed before extraction.
 - A small shared primitives/helpers layer was enough; most of the previous file content was feature-local and did not need further abstraction.
+- Direct feature names such as `playground.js`, `batches.js`, `history.js`, and `settings.js` read better than repeating `-section` inside a `workspace-sections/` folder.
 
 **Carry-forward risks**
 
@@ -274,6 +275,7 @@ Begin only after Phases 1 through 4 are complete.
 - 2026-04-14: App Router migration remains last to avoid combining framework migration with architecture and styling changes.
 - 2026-04-14: Phase 2 will use extracted browser/API/selector modules before considering any external state library.
 - 2026-04-14: Phase 3 should keep only a minimal shared section-primitives layer and otherwise split by feature file.
+- 2026-04-14: Files inside `components/workspace-sections/` should use direct feature names, while shared files should be named by role such as `section-primitives` and `section-helpers`.
 
 ## Discovered Issues
 
@@ -287,7 +289,7 @@ Begin only after Phases 1 through 4 are complete.
 - Read this file first in every future session.
 - Verified in this session: `npm run typecheck` and `npm run lint` succeeded after the Phase 3 split.
 - Phase 1 is complete from a compiler and contract perspective. Manual UI QA remains a recommended regression check, but it no longer blocks the architecture sequence.
-- Phase 3 progress in this session: `components/workspace-sections.js` was replaced by feature-scoped files under `components/workspace-sections/` plus a small shared primitives/helpers layer.
+- Phase 3 progress in this session: `components/workspace-sections.js` was replaced by feature-scoped files under `components/workspace-sections/`, using direct feature names plus `section-primitives` and `section-helpers` for the shared layer.
 - Next recommended task: begin Phase 4 by removing `drawer-shell.module.css` and `library-drawer.module.css`, then standardize the remaining workspace styling patterns.
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 

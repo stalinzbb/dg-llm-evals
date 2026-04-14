@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { downloadCsv, serializeRunRows } from "@/lib/workspace";
 import { toCsv } from "@/lib/csv";
 
-import { EmptyState, SectionCard, SectionHead } from "./primitives";
-import { formatHistoryDateParts, normalizeShortRunId } from "./shared";
+import { EmptyState, SectionCard, SectionHead } from "./section-primitives";
+import { formatHistoryDateParts, normalizeShortRunId } from "./section-helpers";
 
 export function HistorySection({
   filteredRuns,
