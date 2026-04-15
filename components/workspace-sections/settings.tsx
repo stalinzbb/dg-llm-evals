@@ -20,6 +20,7 @@ import {
   getSourcePoolSummary,
   sanitizeModelConfigurationIds,
 } from "@/lib/workspace-selectors";
+import type { SettingsSectionProps } from "@/lib/types/workspace";
 
 import { SectionCard, SectionHead } from "./section-primitives";
 
@@ -29,7 +30,7 @@ export function SettingsSection({
   handleSaveSettings,
   sourcePoolImporting,
   sourcePoolStats,
-}) {
+}: SettingsSectionProps) {
   const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
     sanitizeModelConfigurationIds(enabledModelIds),
   );
@@ -44,7 +45,7 @@ export function SettingsSection({
   );
   const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
 
-  function handleModelToggle(modelValue, checked) {
+  function handleModelToggle(modelValue: string, checked: boolean) {
     setDraftEnabledModelIds((current) => {
       const currentIds = sanitizeModelConfigurationIds(current);
       if (checked) {
@@ -79,9 +80,7 @@ export function SettingsSection({
 
           {enabledRunnableCount === 0 ? (
             <Alert variant="destructive">
-              <AlertDescription>
-                At least one runnable model must stay enabled.
-              </AlertDescription>
+              <AlertDescription>At least one runnable model must stay enabled.</AlertDescription>
             </Alert>
           ) : null}
 
@@ -98,6 +97,7 @@ export function SettingsSection({
               {MODEL_OPTIONS.map((model) => {
                 const isChecked = selectedEnabledIds.includes(model.value);
                 const isLocked = Boolean(model.unavailable);
+
                 return (
                   <TableRow key={model.value}>
                     <TableCell>
@@ -140,7 +140,7 @@ export function SettingsSection({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  handleImportSourcePool(file);
+                  void handleImportSourcePool(file);
                 }
                 event.target.value = "";
               }}

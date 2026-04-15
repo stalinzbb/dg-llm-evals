@@ -65,7 +65,7 @@ export function getAffiliationSelectValue(
   teamAffiliation: TestCase["teamAffiliation"],
   teamAffiliationConfig: Pick<WorkspaceSettings, never> & {
     allowsOther: boolean;
-    mode: "select" | "freeform";
+    mode: "select" | "text";
     options: string[];
   },
 ) {

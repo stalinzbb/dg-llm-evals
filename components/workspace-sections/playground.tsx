@@ -16,11 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  createInitialVariant,
-  downloadCsv,
-  formatModelOption,
-} from "@/lib/workspace";
 import { DEFAULT_GENERATION_SETTINGS } from "@/lib/constants";
 import { toCsv } from "@/lib/csv";
 import {
@@ -29,6 +24,8 @@ import {
   getTeamAffiliationConfig,
   normalizeTaxonomySelection,
 } from "@/lib/taxonomy";
+import type { PlaygroundSectionProps } from "@/lib/types/workspace";
+import { createInitialVariant, downloadCsv, formatModelOption } from "@/lib/workspace";
 
 import {
   EmptyState,
@@ -76,7 +73,7 @@ export function PlaygroundSection({
   testCases,
   updateVariant,
   variants,
-}) {
+}: PlaygroundSectionProps) {
   const [causeTagError, setCauseTagError] = useState("");
   const [dismissedResultKey, setDismissedResultKey] = useState("");
   const [isCaseLibraryOpen, setIsCaseLibraryOpen] = useState(false);
@@ -96,7 +93,30 @@ export function PlaygroundSection({
   const latestResultKey = playgroundGenerating ? "__pending__" : playgroundRun?.id || "";
   const isResultDrawerOpen = Boolean(latestResultKey) && latestResultKey !== dismissedResultKey;
 
-  function handleCauseTagToggle(tag) {
+  function parseSharedDecimalInput(
+    value: string,
+    options: { fallback: number; max: number; min: number },
+  ) {
+    const nextValue = clampDecimalInput(value, { min: options.min, max: options.max });
+    return nextValue === "" ? options.fallback : Number(nextValue);
+  }
+
+  function parseSharedIntegerInput(value: string, fallback: number) {
+    const nextValue = clampIntegerInput(value);
+    return nextValue === "" || nextValue === "-" ? fallback : Number(nextValue);
+  }
+
+  function parseVariantDecimalInput(value: string, options: { max: number; min: number }) {
+    const nextValue = clampDecimalInput(value, { min: options.min, max: options.max });
+    return nextValue === "" ? "" : Number(nextValue);
+  }
+
+  function parseVariantIntegerInput(value: string) {
+    const nextValue = clampIntegerInput(value);
+    return nextValue === "" || nextValue === "-" ? "" : Number(nextValue);
+  }
+
+  function handleCauseTagToggle(tag: string) {
     const exists = caseDraft.causeTags.includes(tag);
 
     if (exists) {
@@ -120,23 +140,23 @@ export function PlaygroundSection({
     setCauseTagError("");
   }
 
-  function handleSharedModelParamsToggle(enabled) {
+  function handleSharedModelParamsToggle(enabled: boolean) {
     setIsSharedModelParamsEnabled(enabled);
     if (!enabled) {
       setGenerationSettings(DEFAULT_GENERATION_SETTINGS);
     }
   }
 
-  function handleVariantOverrideToggle(variantId, enabled) {
+  function handleVariantOverrideToggle(variantId: string, enabled: boolean) {
     updateVariant(variantId, {
       useOverrides: enabled,
       ...(enabled
         ? {}
         : {
-            temperature: "",
-            topP: "",
             maxTokens: "",
             seed: "",
+            temperature: "",
+            topP: "",
           }),
     });
   }
@@ -154,7 +174,7 @@ export function PlaygroundSection({
             action={
               <Button
                 disabled={!sourcePoolStats.total || playgroundRandomizing}
-                onClick={handleRandomizeCaseFromSourcePool}
+                onClick={() => void handleRandomizeCaseFromSourcePool()}
                 size="sm"
                 type="button"
                 variant="outline"
@@ -279,9 +299,9 @@ export function PlaygroundSection({
                       }
                       value={affiliationSelectValue}
                     >
-                      <SelectTrigger className="w-full" id="team-affiliation">
-                        <SelectValue placeholder="Select affiliation" />
-                      </SelectTrigger>
+                    <SelectTrigger className="w-full" id="team-affiliation">
+                      <SelectValue placeholder="Select affiliation" />
+                    </SelectTrigger>
                       <SelectContent>
                         {teamAffiliationConfig.options.map((teamAffiliation) => (
                           <SelectItem key={teamAffiliation} value={teamAffiliation}>
@@ -291,8 +311,8 @@ export function PlaygroundSection({
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Options are filtered from the taxonomy CSV for the selected organization
-                      type and activity.
+                      Options are filtered from the taxonomy CSV for the selected organization type
+                      and activity.
                     </p>
                   </div>
                 ) : (
@@ -334,6 +354,7 @@ export function PlaygroundSection({
                 <div className="flex flex-wrap gap-1.5">
                   {causeTagOptions.map((tag) => {
                     const selected = caseDraft.causeTags.includes(tag);
+
                     return (
                       <Button
                         key={tag}
@@ -348,7 +369,9 @@ export function PlaygroundSection({
                   })}
                 </div>
                 <p
-                  className={`mt-1.5 text-xs ${causeTagError ? "text-destructive" : "text-muted-foreground"}`}
+                  className={`mt-1.5 text-xs ${
+                    causeTagError ? "text-destructive" : "text-muted-foreground"
+                  }`}
                 >
                   {causeTagError || "Up to 3 tags in the prompt payload."}
                 </p>
@@ -359,7 +382,7 @@ export function PlaygroundSection({
           <div className="flex items-center gap-2 border-t pt-4">
             <Button
               disabled={!canSaveCase}
-              onClick={() => handleSaveCase(normalizeTestCase(caseDraft))}
+              onClick={() => void handleSaveCase(normalizeTestCase(caseDraft))}
               size="sm"
               type="button"
               variant="outline"
@@ -446,15 +469,19 @@ export function PlaygroundSection({
               </div>
               {isSharedModelParamsEnabled ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <Field
-                    helpText={HELP_TEXT.temperature}
-                    label="Temperature"
+                    <Field
+                      helpText={HELP_TEXT.temperature}
+                      label="Temperature"
                     max="1"
                     min="0"
                     onChange={(value) =>
                       setGenerationSettings((current) => ({
                         ...current,
-                        temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                        temperature: parseSharedDecimalInput(value, {
+                          fallback: current.temperature,
+                          max: 1,
+                          min: 0,
+                        }),
                       }))
                     }
                     step="0.01"
@@ -464,7 +491,10 @@ export function PlaygroundSection({
                   <Field
                     label="Max Tokens"
                     onChange={(value) =>
-                      setGenerationSettings((current) => ({ ...current, maxTokens: value }))
+                      setGenerationSettings((current) => ({
+                        ...current,
+                        maxTokens: parseSharedIntegerInput(value, current.maxTokens),
+                      }))
                     }
                     type="number"
                     value={generationSettings.maxTokens}
@@ -477,7 +507,11 @@ export function PlaygroundSection({
                     onChange={(value) =>
                       setGenerationSettings((current) => ({
                         ...current,
-                        topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                        topP: parseSharedDecimalInput(value, {
+                          fallback: current.topP,
+                          max: 1,
+                          min: 0,
+                        }),
                       }))
                     }
                     step="0.01"
@@ -504,7 +538,7 @@ export function PlaygroundSection({
           <div className="flex items-center gap-2 border-t pt-4">
             <Button
               disabled={!canSavePrompt}
-              onClick={handleSavePrompt}
+              onClick={() => void handleSavePrompt()}
               size="sm"
               type="button"
               variant="outline"
@@ -579,7 +613,10 @@ export function PlaygroundSection({
                       <SelectContent>
                         <SelectItem value="current">Current draft</SelectItem>
                         {promptTemplates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
+                          <SelectItem
+                            key={template.id ?? template.name}
+                            value={template.id ?? "current"}
+                          >
                             {template.name}
                           </SelectItem>
                         ))}
@@ -625,7 +662,7 @@ export function PlaygroundSection({
                     </div>
                     <Switch
                       checked={Boolean(variant.useOverrides)}
-                      onCheckedChange={(enabled) =>
+                      onCheckedChange={(enabled: boolean) =>
                         handleVariantOverrideToggle(variant.id, enabled)
                       }
                     />
@@ -639,7 +676,7 @@ export function PlaygroundSection({
                         min="0"
                         onChange={(value) =>
                           updateVariant(variant.id, {
-                            temperature: clampDecimalInput(value, { min: 0, max: 1 }),
+                            temperature: parseVariantDecimalInput(value, { min: 0, max: 1 }),
                           })
                         }
                         step="0.01"
@@ -648,7 +685,9 @@ export function PlaygroundSection({
                       />
                       <Field
                         label="Max Tokens Override"
-                        onChange={(value) => updateVariant(variant.id, { maxTokens: value })}
+                        onChange={(value) =>
+                          updateVariant(variant.id, { maxTokens: parseVariantIntegerInput(value) })
+                        }
                         type="number"
                         value={variant.maxTokens}
                       />
@@ -659,7 +698,7 @@ export function PlaygroundSection({
                         min="0"
                         onChange={(value) =>
                           updateVariant(variant.id, {
-                            topP: clampDecimalInput(value, { min: 0, max: 1 }),
+                            topP: parseVariantDecimalInput(value, { min: 0, max: 1 }),
                           })
                         }
                         step="0.01"
@@ -703,7 +742,7 @@ export function PlaygroundSection({
             disabled={playgroundGenerating}
             onClick={() => {
               setDismissedResultKey("");
-              handleGenerate();
+              void handleGenerate();
             }}
             type="button"
           >

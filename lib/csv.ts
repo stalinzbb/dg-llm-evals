@@ -6,16 +6,17 @@ function escapeCell(value: unknown) {
   return stringValue;
 }
 
-export function toCsv(rows: Record<string, unknown>[]): string {
+export function toCsv<T extends object>(rows: T[]): string {
   if (!rows.length) {
     return "";
   }
 
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0] as object);
   const lines = [headers.join(",")];
 
   rows.forEach((row) => {
-    lines.push(headers.map((header) => escapeCell(row[header])).join(","));
+    const record = row as Record<string, unknown>;
+    lines.push(headers.map((header) => escapeCell(record[header])).join(","));
   });
 
   return lines.join("\n");

@@ -99,11 +99,12 @@ declare module "@/components/ui/select" {
     value?: string;
   }>;
   export const SelectTrigger: FC<HTMLAttributes<HTMLButtonElement> & { className?: string }>;
-  export const SelectValue: FC<{ children?: ReactNode; className?: string }>;
+  export const SelectValue: FC<{ children?: ReactNode; className?: string; placeholder?: string }>;
   export const SelectContent: FC<{ children?: ReactNode; className?: string }>;
   export const SelectItem: FC<{
     children?: ReactNode;
     className?: string;
+    disabled?: boolean;
     value: string;
   }>;
 }
@@ -179,6 +180,30 @@ declare module "@/components/ui/textarea" {
   }
 
   export const Textarea: FC<TextareaProps>;
+}
+
+declare module "@/components/ui/table" {
+  import type { FC, HTMLAttributes, TableHTMLAttributes } from "react";
+
+  export const Table: FC<TableHTMLAttributes<HTMLTableElement> & { className?: string }>;
+  export const TableHeader: FC<HTMLAttributes<HTMLTableSectionElement> & { className?: string }>;
+  export const TableBody: FC<HTMLAttributes<HTMLTableSectionElement> & { className?: string }>;
+  export const TableFooter: FC<HTMLAttributes<HTMLTableSectionElement> & { className?: string }>;
+  export const TableRow: FC<HTMLAttributes<HTMLTableRowElement> & { className?: string }>;
+  export const TableHead: FC<HTMLAttributes<HTMLTableCellElement> & { className?: string }>;
+  export const TableCell: FC<HTMLAttributes<HTMLTableCellElement> & { className?: string }>;
+  export const TableCaption: FC<HTMLAttributes<HTMLTableCaptionElement> & { className?: string }>;
+}
+
+declare module "@/components/ui/switch" {
+  import type { FC } from "react";
+
+  export const Switch: FC<{
+    checked?: boolean;
+    className?: string;
+    onCheckedChange?: (checked: boolean) => void;
+    size?: string;
+  }>;
 }
 
 declare module "@/components/ui/tooltip" {

@@ -4,8 +4,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { downloadCsv, serializeRunRows } from "@/lib/workspace";
 import { toCsv } from "@/lib/csv";
+import type { HistorySectionProps } from "@/lib/types/workspace";
+import { downloadCsv, serializeRunRows } from "@/lib/workspace";
 
 import { EmptyState, SectionCard, SectionHead } from "./section-primitives";
 import { formatHistoryDateParts, normalizeShortRunId } from "./section-helpers";
@@ -18,7 +19,7 @@ export function HistorySection({
   selectedRunId,
   setHistorySearch,
   setSelectedRunId,
-}) {
+}: HistorySectionProps) {
   return (
     <>
       <WorkspacePageHeader
@@ -41,6 +42,7 @@ export function HistorySection({
             <div className="grid gap-2">
               {filteredRuns.map((run) => {
                 const parts = formatHistoryDateParts(run.createdAt);
+
                 return (
                   <button
                     className={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-accent/50 ${
