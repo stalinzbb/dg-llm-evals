@@ -12,7 +12,7 @@ The sequencing is intentional:
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 4**
+Current overall phase: **Phase 4, Part 1**
 
 ## Phase Summary
 
@@ -21,8 +21,8 @@ Current overall phase: **Phase 4**
 | Phase 1: TypeScript and shared contracts | Done | Add compiler safety and canonical shared types | None | TS config exists, shared types exist, workspace/domain path compiles, roadmap updated |
 | Phase 2: State and data boundaries | Done | Extract orchestration and fetch/persistence concerns out of the UI surface | Phase 1 | Typed actions/services/selectors replace wide UI-owned orchestration |
 | Phase 3: Break up `workspace-sections.js` | Done | Split the monolith into feature-scoped components | Phase 2 | Feature sections consume explicit typed props instead of a broad workspace contract |
-| Phase 4: Design system unification | Not started | Remove dead CSS, consolidate tokens, standardize Tailwind/shadcn/ui | Phase 3 | No CSS Modules, no dead CSS files, single token source of truth |
-| Phase 4b: UI/UX polish | Not started | Interaction quality, feedback patterns, accessibility, and information density | Phase 4 | All UX items addressed, manual QA passes |
+| Phase 4: Design system unification | Not started | Remove dead CSS, consolidate tokens, standardize Tailwind/shadcn/ui | Phase 3 | Phase 4 chunk map complete; no CSS Modules, no dead CSS files, single token source of truth |
+| Phase 4b: UI/UX polish | Not started | Interaction quality, feedback patterns, information density, and targeted usability improvements | Phase 4 | Phase 4b chunk map complete; core UX items addressed, manual QA passes |
 | Phase 5: App Router migration | Not started | Move to `app/` after architecture and UI are stable | Phase 4b | Main flows run under App Router with behavior parity |
 
 ## Phase 1
@@ -194,6 +194,22 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 
 **Why now:** Styling cleanup should happen after the component and state structure stop moving. The current state has three overlapping styling systems creating confusion and dead weight.
 
+### Phase 4 chunk map
+
+| Part | Status | Priority | Scope | Why grouped this way |
+| --- | --- | --- | --- | --- |
+| Part 1: CSS foundation cleanup | Not started | Highest | Delete dead CSS files, merge `tokens.css` + `base.css` into `globals.css`, reduce `_app` to a single stylesheet import | These are the safest structural wins and unblock every later styling/UI pass |
+| Part 2: Globals reduction | Not started | High | Remove dead legacy classes from `globals.css` in audit batches | This is still CSS-only work, but should happen after the single-source-of-truth merge lands |
+| Part 3: Shared/component TS conversion | Not started | High | Convert shared workspace shell/support components and low-risk pages to `.tsx` | This is code-structure work with minimal UX change; best done after styling inputs stabilize |
+| Part 4: Feature section TS conversion | Not started | Medium | Convert `settings`, `history`, `batches`, then `playground` to `.tsx` | These files are related by ownership and should move in a deliberate sequence |
+| Part 5: Token reconciliation follow-through | Deferred to late Phase 4b | Medium | Clean up remaining semantic token usage after the UI polish work exposes what still matters | Full token reconciliation is easier once the final component surfaces and feedback patterns settle |
+
+### Phase 4 execution rule
+
+- Only work one Phase 4 part at a time.
+- Do not mix CSS cleanup and major UX changes in the same implementation pass.
+- Mark a part in progress before starting it, and update the next recommended part when it lands.
+
 ### Current state audit
 
 | File | Lines | Status |
@@ -205,23 +221,19 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 | `components/drawer-shell.module.css` | 60 | **Dead** — `drawer-shell.js` was rewritten to use shadcn `Sheet`; module is never imported |
 | `components/library-drawer.module.css` | 72 | **Dead** — `library-drawer.js` was rewritten to use Tailwind utilities; module is never imported |
 
-### Planned changes
+### Planned changes by part
 
-**Step 1: Delete dead files (instant wins)**
+**Part 1: CSS foundation cleanup**
 
 - Delete `components/drawer-shell.module.css` (no imports exist).
 - Delete `components/library-drawer.module.css` (no imports exist).
 - Delete `styles/layout.css` (not imported in `_app.js` or anywhere else).
-
-**Step 2: Resolve the token conflict**
 
 `tokens.css` and `globals.css` both define `:root` blocks with the same variable names but different values. Both are imported in `_app.js`. Since CSS cascade means `globals.css` wins (imported last), `tokens.css` values are silently overridden.
 
 - Audit which token values are actually rendered (globals wins by import order).
 - Merge the authoritative values into a single `:root` block in `globals.css`.
 - Remove the `tokens.css` import from `_app.js` and delete the file.
-
-**Step 3: Merge `base.css` into `globals.css`**
 
 `base.css` resets (`* { box-sizing }`, `body` styles, heading typography) overlap with globals and Tailwind preflight.
 
@@ -231,7 +243,7 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 
 Result: `_app.js` imports only `globals.css`.
 
-**Step 4: Identify and remove dead CSS classes from globals.css**
+**Part 2: Globals reduction**
 
 Many classes in `globals.css` are from the pre-shadcn layout and are no longer referenced by any component:
 
@@ -248,9 +260,7 @@ Many classes in `globals.css` are from the pre-shadcn layout and are no longer r
 - Grep each class name against `components/` and `pages/` to confirm zero references.
 - Remove confirmed dead classes in batches, running visual QA after each batch.
 
-**Step 5: Slim the remaining globals.css**
-
-After dead code removal, the file should contain only:
+Continue slimming `globals.css` until it contains only:
 
 - The single `:root` / `[data-theme="dark"]` token block.
 - The `@theme inline` shadcn bridge and `.dark` class.
@@ -260,16 +270,12 @@ After dead code removal, the file should contain only:
 
 Target: reduce from ~1452 lines to under ~300 lines.
 
-**Step 6: Convert remaining JS components to TypeScript**
+**Part 3: Shared/component TS conversion**
 
-The workspace-sections are still `.js` despite having typed view-model contracts from Phase 2.
+Convert lower-risk shared files first:
 
 - `section-primitives.js` → `section-primitives.tsx`
 - `section-helpers.js` → `section-helpers.tsx`
-- `settings.js` → `settings.tsx`
-- `history.js` → `history.tsx`
-- `batches.js` → `batches.tsx`
-- `playground.js` → `playground.tsx` (largest — do last)
 - `result-card.js` → `result-card.tsx`
 - `workspace-layout.js` → `workspace-layout.tsx`
 - `workspace-page-header.js` → `workspace-page-header.tsx`
@@ -278,6 +284,20 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 - `icons.js` → `icons.tsx`
 - `workspace-status.js` → `workspace-status.tsx` (delete `.d.ts` shim)
 - Page files: `_app.js` → `_app.tsx`, `_document.js` → `_document.tsx`, `login.js` → `login.tsx`
+
+**Part 4: Feature section TS conversion**
+
+The workspace-sections are still `.js` despite having typed view-model contracts from Phase 2.
+
+- `settings.js` → `settings.tsx`
+- `history.js` → `history.tsx`
+- `batches.js` → `batches.tsx`
+- `playground.js` → `playground.tsx` (largest — do last)
+
+**Part 5: Token reconciliation follow-through**
+
+- Revisit remaining semantic token aliases after Phase 4b UI work.
+- Keep this late on purpose so we do not rename tokens before the final UI surface settles.
 
 **Interfaces/types affected**
 
@@ -296,19 +316,25 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Checklist**
 
+- [ ] Part 1: CSS foundation cleanup
 - [ ] Delete dead CSS Module files (`drawer-shell.module.css`, `library-drawer.module.css`)
 - [ ] Delete dead `layout.css`
 - [ ] Resolve token conflict: merge `tokens.css` into `globals.css`, delete `tokens.css`
 - [ ] Merge `base.css` typography into `globals.css`, delete `base.css`
+- [ ] Part 2: Globals reduction
 - [ ] Audit and remove dead old-layout classes from `globals.css`
 - [ ] Audit and remove dead old-button/form/card classes from `globals.css`
 - [ ] Audit and remove dead old-table/misc classes from `globals.css`
+- [ ] Part 3: Shared/component TS conversion
 - [ ] Convert section-primitives, section-helpers to `.tsx`
-- [ ] Convert settings, history, batches sections to `.tsx`
-- [ ] Convert playground section to `.tsx`
 - [ ] Convert result-card, drawer-shell, library-drawer, workspace-layout, workspace-page-header, icons to `.tsx`
 - [ ] Convert workspace-status to `.tsx` and remove `.d.ts` shim
 - [ ] Convert page files (`_app`, `_document`, `login`) to `.tsx`
+- [ ] Part 4: Feature section TS conversion
+- [ ] Convert settings, history, batches sections to `.tsx`
+- [ ] Convert playground section to `.tsx`
+- [ ] Part 5: Token reconciliation follow-through
+- [ ] Reconcile remaining semantic token aliases after Phase 4b UI work
 - [ ] Run `npm run typecheck && npm run lint && npm run build`
 - [ ] Manual visual QA across all flows
 
@@ -323,15 +349,31 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Next session start point**
 
-Start with Steps 1–3 (dead file deletion, token merge, base merge) as they are zero-risk. Then proceed to Step 4 class auditing.
+Start with Phase 4 Part 1 only (dead file deletion, token merge, base merge). Do not pull in TS conversion or UX polish during that pass.
 
 ## Phase 4b
 
 **Status:** Not started
 
-**Objective:** Improve interaction quality, feedback patterns, accessibility, and information density across the workspace UI.
+**Objective:** Improve interaction quality, feedback patterns, and information density across the workspace UI without mixing in the deferred accessibility/responsive hardening pass too early.
 
 **Why now:** The design system is consolidated (Phase 4), the component structure is stable (Phase 3), and state boundaries exist (Phase 2). UX polish is most effective when the underlying architecture has stopped moving.
+
+### Phase 4b chunk map
+
+| Part | Status | Priority | Scope | Why grouped this way |
+| --- | --- | --- | --- | --- |
+| Part 1: Safety and feedback | Not started | Highest | Confirmation dialogs, toasts, batch progress, reopen last result | Prevents data loss and fixes the most obvious interaction gaps with limited layout churn |
+| Part 2: Empty states and import confidence | Not started | High | Structured empty states, lightweight onboarding, CSV preview and validation | These are adjacent “user confidence” flows and can ship together |
+| Part 3: Shared UI dedup and result experience | Not started | High | Variant card dedup, result card comparison improvements, copy affordances, prompt collapsing, rating UI improvements | These changes touch the same surface area and should be designed together |
+| Part 4: Accessibility and responsive hardening | Deferred | Later | ARIA semantics, focus audit, medium-breakpoint fixes, constrained history layout | Intentionally delayed per current priority; keep as one dedicated pass instead of sprinkling partial fixes |
+| Part 5: Final token reconciliation | Deferred until after Parts 1-4 | Later | Normalize custom tokens vs shadcn tokens after the above polish changes settle | Best done last so token changes reflect the final component set |
+
+### Phase 4b execution rule
+
+- Prioritize user-safety and feedback before visual refinement.
+- Keep accessibility and responsive hardening together in one later pass unless a current task directly breaks usability.
+- Do not start token reconciliation until the UI polish parts above it are stable.
 
 ### UX audit findings
 
@@ -373,38 +415,33 @@ Start with Steps 1–3 (dead file deletion, token merge, base merge) as they are
 - Two token systems coexist: custom tokens (`--ink`, `--surface`, `--brand`) and shadcn tokens (`--foreground`, `--background`, `--primary`). Components mix both, creating an inconsistent mental model.
 - The `SectionCard` primitive wraps shadcn `Card` but adds `gap-0` and `p-5`, creating a subtle visual discrepancy with raw `Card` usage in variant cards.
 
-### Planned changes
+### Planned changes by part
 
-**Step 1: Confirmation and feedback patterns**
+**Part 1: Safety and feedback**
 
 - Add a confirmation dialog (shadcn `AlertDialog`) before all destructive actions: delete case, delete prompt, remove variant.
 - Add toast notifications (shadcn `Sonner` or a lightweight toast) for: save case, save prompt, save rating, batch start, batch complete, CSV import complete.
 - Add a progress indicator for batch runs (e.g., "Processing 3 of 12 cases…").
 - Make the last playground result re-openable via a "Show last result" button that appears after dismissal.
 
-**Step 2: Empty states and onboarding**
+**Part 2: Empty states and import confidence**
 
 - Replace plain-text empty states with structured empty states that include an icon, message, and a primary call-to-action button linking to the relevant flow.
 - Add a first-run detection that shows a brief guided walkthrough or sample data prompt.
+- After parsing CSV, show a preview table of the first 5 rows before the user commits with "Save imported cases."
+- Show column mapping validation (expected headers vs. actual headers).
 
-**Step 3: Variant card deduplication**
+**Part 3: Shared UI dedup and result experience**
 
 - Extract a shared `VariantCardFields` component used by both playground and batches, reducing duplicated grid/select/label markup.
 - Keep override controls playground-only since batches don't use them.
-
-**Step 4: Result card improvements**
 
 - Add a side-by-side comparison layout option for when `playgroundMode === "compare"` — render results in columns instead of a vertical stack.
 - Replace the 6-field dropdown rating grid with a visual star or slider rating for faster scanning.
 - Add copy-to-clipboard on the message frame.
 - Collapse prompt details by default and use shadcn `Collapsible` instead of manual state toggle.
 
-**Step 5: CSV import preview**
-
-- After parsing, show a preview table of the first 5 rows before the user commits with "Save imported cases."
-- Show column mapping validation (expected headers vs. actual headers).
-
-**Step 6: Accessibility pass**
+**Part 4: Accessibility and responsive hardening**
 
 - Add `role="group"` and `aria-label` to the cause tag toggle group.
 - Add `role="listbox"` and `aria-selected` to the history run list.
@@ -413,7 +450,7 @@ Start with Steps 1–3 (dead file deletion, token merge, base merge) as they are
 - Ensure the variant grid collapses (`grid-cols-3` → `grid-cols-1` at `md` breakpoint).
 - Add `max-h` with overflow scroll to the history run list panel.
 
-**Step 7: Token system reconciliation**
+**Part 5: Final token reconciliation**
 
 - Map the custom tokens (`--ink`, `--surface`, `--brand`) to their shadcn equivalents (`--foreground`, `--background`, `--primary`).
 - Decide whether to keep the custom token layer as semantic aliases or replace all usages with shadcn tokens.
@@ -439,18 +476,25 @@ Start with Steps 1–3 (dead file deletion, token merge, base merge) as they are
 
 **Checklist**
 
+- [ ] Part 1: Safety and feedback
 - [ ] Add confirmation dialogs for delete case, delete prompt, remove variant
 - [ ] Add toast notifications for save and run operations
 - [ ] Add batch run progress indicator
 - [ ] Add "Show last result" re-open button for playground
+- [ ] Part 2: Empty states and import confidence
 - [ ] Replace plain-text empty states with structured empty states
+- [ ] Add lightweight first-run onboarding or sample-data prompt
+- [ ] Add CSV import preview with column validation
+- [ ] Part 3: Shared UI dedup and result experience
 - [ ] Extract shared `VariantCardFields` component
 - [ ] Add side-by-side comparison layout for results
 - [ ] Improve rating UI (star/slider or visual scale)
 - [ ] Add copy-to-clipboard on result message
-- [ ] Add CSV import preview with column validation
+- [ ] Collapse prompt details by default with `Collapsible`
+- [ ] Part 4: Accessibility and responsive hardening
 - [ ] Accessibility: cause tag group, history listbox, focus rings, theme toggle
 - [ ] Responsive: collapse variant grid at md, constrain history list height
+- [ ] Part 5: Final token reconciliation
 - [ ] Reconcile custom tokens with shadcn token system
 - [ ] Manual visual QA and keyboard-only navigation test
 
@@ -466,7 +510,7 @@ Start with Steps 1–3 (dead file deletion, token merge, base merge) as they are
 
 **Next session start point**
 
-Start with Step 1 (confirmation dialogs and toasts) since it directly prevents data loss.
+Start with Phase 4b Part 1 (confirmation dialogs, toasts, progress, reopen last result). Keep accessibility/responsive work deferred unless a change immediately exposes a blocker.
 
 ## Phase 5
 
@@ -523,6 +567,8 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: CSS Modules (`drawer-shell.module.css`, `library-drawer.module.css`) are already dead imports — drawer-shell.js and library-drawer.js were rewritten to use shadcn Sheet and Tailwind utilities respectively, but the old files were never deleted.
 - 2026-04-14: `layout.css` (239 lines) is dead — never imported. The old sidebar/topbar layout was fully replaced by shadcn `Sidebar` in `workspace-layout.js`.
 - 2026-04-14: `tokens.css` values are silently overridden by `globals.css` (imported later in `_app.js`), making `tokens.css` effectively dead.
+- 2026-04-14: Phase 4 and 4b should be executed as explicit parts rather than one long checklist so work can land incrementally without mixing unrelated risk areas.
+- 2026-04-14: Accessibility and responsive hardening are intentionally deferred into a dedicated later Phase 4b part unless an earlier task uncovers a blocking usability issue.
 
 ## Discovered Issues
 
@@ -545,15 +591,29 @@ Begin only after Phases 1 through 4b are complete.
 - Variant card 3-column grid does not collapse responsively at medium breakpoints.
 - Rating UI uses 6 separate dropdowns where a visual scale would be more scannable.
 
+## Active chunk tracker
+
+| Area | Current part | Status | Next after that |
+| --- | --- | --- | --- |
+| Phase 4 | Part 1: CSS foundation cleanup | Ready | Part 2: Globals reduction |
+| Phase 4b | Part 1: Safety and feedback | Ready after Phase 4 foundation work | Part 2: Empty states and import confidence |
+
+### Deferred for later
+
+- Phase 4 Part 5: Token reconciliation follow-through
+- Phase 4b Part 4: Accessibility and responsive hardening
+- Phase 4b Part 5: Final token reconciliation
+
 ## Session Handoff
 
 - Read this file first in every future session.
 - Verified in this session: `npm run typecheck` and `npm run lint` succeeded after the Phase 3 split.
 - Phase 1 is complete from a compiler and contract perspective. Manual UI QA remains a recommended regression check, but it no longer blocks the architecture sequence.
 - Phase 3 progress in this session: `components/workspace-sections.js` was replaced by feature-scoped files under `components/workspace-sections/`, using direct feature names plus `section-primitives` and `section-helpers` for the shared layer.
-- Phase 4 was expanded with a detailed CSS audit. Key finding: CSS Modules, `layout.css`, and `tokens.css` are all dead/overridden — Steps 1-3 are zero-risk deletions. ~900 lines of dead CSS classes in globals.css were identified for removal.
-- Phase 4b was added as a dedicated UX polish phase covering: confirmation dialogs, toast feedback, batch progress, empty states, variant card dedup, result comparison layout, accessibility, responsive fixes, and token reconciliation.
-- Next recommended task: start Phase 4 Steps 1-3 (delete dead files, resolve token conflict, merge base.css).
+- Phase 4 is now chunked into five parts so cleanup, globals reduction, TS conversion, and late token follow-through can be tackled independently.
+- Phase 4b is now chunked into five parts so safety/feedback, empty states/import confidence, result-surface improvements, and deferred accessibility/responsive work are clearly separated.
+- Accessibility and responsive hardening are intentionally grouped together as a later dedicated pass instead of being mixed into the next implementation step.
+- Next recommended task: start Phase 4 Part 1 only (delete dead files, resolve token conflict, merge base.css).
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
@@ -563,3 +623,4 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: Extracted browser persistence, API client, and selector boundaries from `lib/workspace`, and replaced the old workspace JS implementation with typed `lib/workspace.ts`.
 - 2026-04-14: Split `components/workspace-sections.js` into feature-scoped files with explicit typed props, added shared section primitives/helpers, and removed the monolithic section module.
 - 2026-04-14: Expanded Phase 4 with detailed CSS audit (dead files, token conflict, ~900 lines of dead classes identified). Added Phase 4b for UX polish (confirmations, toasts, accessibility, empty states, result comparison, responsive fixes).
+- 2026-04-14: Reorganized Phase 4 and 4b into visible execution parts, with accessibility/responsive hardening explicitly deferred into a later dedicated chunk.
