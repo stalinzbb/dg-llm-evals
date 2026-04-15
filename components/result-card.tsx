@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { SaveRatingRequest } from "@/lib/types/api";
+import type { RunMetrics, RunResult } from "@/lib/types/domain";
 
-function formatCurrency(value) {
-  if (value === null || value === undefined) {
+function formatCurrency(value: RunMetrics["estimatedCost"]) {
+  if (value === null || value === undefined || value === "") {
     return "N/A";
   }
   return `$${value.toFixed(6)}`;
@@ -28,40 +31,63 @@ const RATING_FIELDS = [
   ["emotionalResonance", "Emotional resonance"],
   ["brandSafety", "Brand safety"],
   ["overall", "Overall"],
-];
+] as const;
 
-export default function ResultCard({ result, onSaveRating, showRating = true }) {
-  const [view, setView] = useState("cause");
+type RatingFieldKey = (typeof RATING_FIELDS)[number][0];
+
+interface RatingDraft extends Record<RatingFieldKey, string> {
+  notes: string;
+  winner: boolean;
+}
+
+const INITIAL_RATING: RatingDraft = {
+  brandSafety: "3",
+  clarity: "3",
+  emotionalResonance: "3",
+  fundraiserRelevance: "3",
+  notes: "",
+  overall: "3",
+  specificity: "3",
+  winner: false,
+};
+
+interface ResultCardProps {
+  onSaveRating?: (payload: SaveRatingRequest) => Promise<void>;
+  result: RunResult;
+  showRating?: boolean;
+}
+
+export default function ResultCard({
+  result,
+  onSaveRating,
+  showRating = true,
+}: ResultCardProps) {
+  const [view, setView] = useState<"cause" | "full">("cause");
   const [showRequestDetails, setShowRequestDetails] = useState(false);
-  const [rating, setRating] = useState({
-    clarity: "3",
-    specificity: "3",
-    fundraiserRelevance: "3",
-    emotionalResonance: "3",
-    brandSafety: "3",
-    overall: "3",
-    winner: false,
-    notes: "",
-  });
+  const [rating, setRating] = useState<RatingDraft>(INITIAL_RATING);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
+    if (!onSaveRating) {
+      return;
+    }
+
     setSaving(true);
     try {
-      await onSaveRating({
-        variantResultId: result.id,
-        runId: result.runId,
-        rubric: {
-          clarity: Number(rating.clarity),
-          specificity: Number(rating.specificity),
-          fundraiserRelevance: Number(rating.fundraiserRelevance),
-          emotionalResonance: Number(rating.emotionalResonance),
-          brandSafety: Number(rating.brandSafety),
-          overall: Number(rating.overall),
-        },
+      await onSaveRating(({
         notes: rating.notes,
+        rubric: {
+          brandSafety: Number(rating.brandSafety),
+          clarity: Number(rating.clarity),
+          emotionalResonance: Number(rating.emotionalResonance),
+          fundraiserRelevance: Number(rating.fundraiserRelevance),
+          overall: Number(rating.overall),
+          specificity: Number(rating.specificity),
+        },
+        runId: result.runId,
+        variantResultId: result.id,
         winner: rating.winner,
-      });
+      } as unknown) as SaveRatingRequest);
       setRating((current) => ({ ...current, notes: "" }));
     } finally {
       setSaving(false);
@@ -155,10 +181,7 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
               ["Model", result.model || "N/A"],
               ["System Prompt", result.systemPrompt || "N/A"],
               ["User Prompt", result.userPrompt || "N/A"],
-              [
-                "Generation Settings",
-                JSON.stringify(result.generationSettings || {}, null, 2),
-              ],
+              ["Generation Settings", JSON.stringify(result.generationSettings || {}, null, 2)],
             ].map(([label, value]) => (
               <div key={label} className="grid gap-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -182,7 +205,7 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
                     onValueChange={(value) =>
                       setRating((current) => ({ ...current, [key]: value }))
                     }
-                    value={String(rating[key])}
+                    value={rating[key]}
                   >
                     <SelectTrigger className="w-full" id={`${result.id}-${key}`}>
                       <SelectValue />
@@ -199,13 +222,13 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
               ))}
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor={`${result.id}-notes`}>Review notes</Label>
-              <Textarea
-                id={`${result.id}-notes`}
-                onChange={(event) =>
-                  setRating((current) => ({ ...current, notes: event.target.value }))
-                }
-                placeholder="Why is this good or weak? What should change in the prompt?"
+                <Label htmlFor={`${result.id}-notes`}>Review notes</Label>
+                <Textarea
+                  id={`${result.id}-notes`}
+                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+                    setRating((current) => ({ ...current, notes: event.target.value }))
+                  }
+                  placeholder="Why is this good or weak? What should change in the prompt?"
                 value={rating.notes}
               />
             </div>
@@ -214,7 +237,7 @@ export default function ResultCard({ result, onSaveRating, showRating = true }) 
                 <Checkbox
                   checked={rating.winner}
                   id={`${result.id}-winner`}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setRating((current) => ({ ...current, winner: Boolean(checked) }))
                   }
                 />

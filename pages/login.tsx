@@ -1,6 +1,8 @@
+import type { FormEvent } from "react";
+import { useState } from "react";
+
 import Head from "next/head";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
-import { useState } from "react";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -13,22 +15,26 @@ const bodyFont = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
 });
 
+interface LoginResponse {
+  error?: string;
+}
+
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
 
     const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
     });
-    const payload = await response.json();
+    const payload = (await response.json()) as LoginResponse;
 
     if (!response.ok) {
       setError(payload.error || "Invalid password.");
@@ -74,10 +80,16 @@ export default function LoginPage() {
           </section>
           <section className="auth-form-panel">
             <div className="section-label">Sign in</div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", letterSpacing: "-0.04em" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1.8rem",
+                letterSpacing: "-0.04em",
+              }}
+            >
               Shared team access
             </h2>
-            <p style={{ marginTop: 10, marginBottom: 20 }}>
+            <p style={{ marginBottom: 20, marginTop: 10 }}>
               Enter the workspace password to continue.
             </p>
             <form className="field-grid" onSubmit={handleSubmit}>

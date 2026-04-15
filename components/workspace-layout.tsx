@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { useRouter } from "next/router";
 
 import {
   BatchesIcon,
@@ -12,6 +14,7 @@ import {
   SettingsIcon,
   SunMoonIcon,
 } from "@/components/icons";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -29,7 +32,8 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import type { Theme, WorkspacePage } from "@/lib/types/domain";
+import type { WorkspaceStatItem } from "@/lib/types/workspace";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -42,39 +46,54 @@ const bodyFont = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
 });
 
-const workspaceNavItems = [
+const workspaceNavItems: Array<{
+  icon: typeof PlaygroundIcon;
+  label: string;
+  page: Exclude<WorkspacePage, "settings">;
+}> = [
   { label: "Playground", icon: PlaygroundIcon, page: "playground" },
   { label: "Batches", icon: BatchesIcon, page: "batches" },
   { label: "History", icon: HistoryIcon, page: "history" },
 ];
 
-function buildPageHref(page) {
+function buildPageHref(page: Exclude<WorkspacePage, "settings">) {
   return page === "playground" ? "/" : `/?tab=${page}`;
+}
+
+interface WorkspaceLayoutProps {
+  children: ReactNode;
+  currentPage: WorkspacePage;
+  description?: string;
+  onNavClick?: (page: Exclude<WorkspacePage, "settings">) => void;
+  stats?: WorkspaceStatItem[];
+  theme: Theme;
+  title?: string;
+  toggleTheme: () => void;
 }
 
 export default function WorkspaceLayout({
   children,
   currentPage,
-  theme,
-  toggleTheme,
-  title,
   description,
-  stats,
   onNavClick,
-}) {
+  stats,
+  theme,
+  title,
+  toggleTheme,
+}: WorkspaceLayoutProps) {
   const router = useRouter();
 
-  function handleNavClick(page) {
+  function handleNavClick(page: Exclude<WorkspacePage, "settings">) {
     if (onNavClick) {
       onNavClick(page);
     } else {
-      router.push(buildPageHref(page));
+      void router.push(buildPageHref(page));
     }
   }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    void router.push("/login");
   }
 
   return (
@@ -134,10 +153,7 @@ export default function WorkspaceLayout({
               <SidebarGroupContent>
                 <div className="grid gap-2 px-1 py-1">
                   {(stats || []).map((item) => (
-                    <div
-                      className="flex items-baseline justify-between gap-2"
-                      key={item.label}
-                    >
+                    <div className="flex items-baseline justify-between gap-2" key={item.label}>
                       <span className="text-[0.7rem] uppercase tracking-wide text-sidebar-foreground/60">
                         {item.label}
                       </span>
@@ -192,9 +208,7 @@ export default function WorkspaceLayout({
               {currentPage}
             </span>
           </header>
-          <div className="flex-1 overflow-y-auto p-6">
-            {children}
-          </div>
+          <div className="flex-1 overflow-y-auto p-6">{children}</div>
         </SidebarInset>
       </SidebarProvider>
     </>

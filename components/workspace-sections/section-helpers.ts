@@ -1,4 +1,5 @@
 import { formatShortId } from "@/lib/workspace";
+import type { TestCase, WorkspaceSettings } from "@/lib/types/domain";
 
 export const HELP_TEXT = {
   temperature:
@@ -7,9 +8,9 @@ export const HELP_TEXT = {
     "Limits sampling to the most likely token choices within a probability mass. Lower values make responses tighter and more focused.",
   seed:
     "Sets the sampling starting point. Reusing the same seed can help reproduce similar outputs when the rest of the settings stay the same.",
-};
+} as const;
 
-export function formatHistoryDateParts(value) {
+export function formatHistoryDateParts(value: string) {
   const date = new Date(value);
   return {
     date: date.toLocaleDateString(),
@@ -17,7 +18,7 @@ export function formatHistoryDateParts(value) {
   };
 }
 
-export function normalizeShortRunId(value) {
+export function normalizeShortRunId(value: string | null | undefined) {
   if (!value) {
     return "";
   }
@@ -25,7 +26,7 @@ export function normalizeShortRunId(value) {
   return formatShortId(value.replace(/^run_/, ""), 6);
 }
 
-export function clampDecimalInput(value, { min, max }) {
+export function clampDecimalInput(value: string, { min, max }: { min: number; max: number }) {
   if (value === "") {
     return "";
   }
@@ -47,7 +48,7 @@ export function clampDecimalInput(value, { min, max }) {
   return value;
 }
 
-export function clampIntegerInput(value) {
+export function clampIntegerInput(value: string) {
   if (value === "") {
     return "";
   }
@@ -60,7 +61,14 @@ export function clampIntegerInput(value) {
   return value.slice(0, -1);
 }
 
-export function getAffiliationSelectValue(teamAffiliation, teamAffiliationConfig) {
+export function getAffiliationSelectValue(
+  teamAffiliation: TestCase["teamAffiliation"],
+  teamAffiliationConfig: Pick<WorkspaceSettings, never> & {
+    allowsOther: boolean;
+    mode: "select" | "freeform";
+    options: string[];
+  },
+) {
   if (teamAffiliationConfig.mode !== "select") {
     return "";
   }

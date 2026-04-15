@@ -12,7 +12,7 @@ The sequencing is intentional:
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 4.2**
+Current overall phase: **Phase 4.4**
 
 ## Phase Summary
 
@@ -200,8 +200,8 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 | --- | --- | --- | --- | --- |
 | Phase 4.1: CSS foundation cleanup | Done | Highest | Delete dead CSS files, merge `tokens.css` + `base.css` into `globals.css`, reduce `_app` to a single stylesheet import | Safest structural wins; unblocks every later styling and UI pass |
 | Phase 4.2: Globals reduction | In progress | High | Remove dead legacy classes from `globals.css` in audit batches | Still CSS-only work, and should happen immediately after the single-source-of-truth merge |
-| Phase 4.3: Shared/component TS conversion | Not started | High | Convert shared workspace shell/support components and low-risk pages to `.tsx` | Low-risk code structure work once styling inputs stabilize |
-| Phase 4.4: Feature section TS conversion | Not started | Medium | Convert `settings`, `history`, `batches`, then `playground` to `.tsx` | Feature-owned work that benefits from the earlier shared/component conversion landing first |
+| Phase 4.3: Shared/component TS conversion | Done | High | Convert shared workspace shell/support components and low-risk pages to `.tsx` | Low-risk code structure work once styling inputs stabilize |
+| Phase 4.4: Feature section TS conversion | Ready | Medium | Convert `settings`, `history`, `batches`, then `playground` to `.tsx` | Feature-owned work that benefits from the earlier shared/component conversion landing first |
 | Phase 4.5: Token reconciliation follow-through | Deferred to late Phase 4b | Medium | Clean up remaining semantic token usage after the UI polish work exposes what still matters | Full token reconciliation is easier once the final component surfaces and feedback patterns settle |
 
 ### Phase 4 execution rule
@@ -325,11 +325,11 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 - [ ] Audit and remove dead old-layout classes from `globals.css`
 - [ ] Audit and remove dead old-button/form/card classes from `globals.css`
 - [ ] Audit and remove dead old-table/misc classes from `globals.css`
-- [ ] Phase 4.3: Shared/component TS conversion
-- [ ] Convert section-primitives, section-helpers to `.tsx`
-- [ ] Convert result-card, drawer-shell, library-drawer, workspace-layout, workspace-page-header, icons to `.tsx`
-- [ ] Convert workspace-status to `.tsx` and remove `.d.ts` shim
-- [ ] Convert page files (`_app`, `_document`, `login`) to `.tsx`
+- [x] Phase 4.3: Shared/component TS conversion
+- [x] Convert section-primitives, section-helpers to TypeScript
+- [x] Convert result-card, drawer-shell, library-drawer, workspace-layout, workspace-page-header, icons to `.tsx`
+- [x] Convert workspace-status to `.tsx` and remove `.d.ts` shim
+- [x] Convert page files (`_app`, `_document`, `login`) to `.tsx`
 - [ ] Phase 4.4: Feature section TS conversion
 - [ ] Convert settings, history, batches sections to `.tsx`
 - [ ] Convert playground section to `.tsx`
@@ -345,6 +345,7 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 - Phase 4.2 can be executed as repeated audit batches: the first two verified batches removed the dead old app-shell/sidebar/custom-tooltip layer plus a broad set of zero-reference utility/button/toast/toggle/search classes.
 - After those batches, `styles/globals.css` dropped to 712 lines, down from roughly 1452 before Phase 4 started.
 - A third verified Phase 4.2 batch removed the remaining zero-reference legacy result/card/list classes and associated responsive overrides, bringing `styles/globals.css` down to 579 lines.
+- Phase 4.3 needed a lightweight UI declaration shim for the still-JS `components/ui` layer so shared `.tsx` conversions could typecheck cleanly without converting all shadcn/Base UI wrappers in the same pass.
 
 **Carry-forward risks**
 
@@ -353,7 +354,7 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Next session start point**
 
-Start with Phase 4.2 only: audit old layout/button/form/card/table/misc classes in `globals.css` and remove them in small verified batches. Do not pull in TS conversion or UX polish during that pass.
+Start with Phase 4.4: convert `settings`, `history`, `batches`, then `playground` to TypeScript in that order, reusing the new shared/component `.tsx` surfaces from Phase 4.3.
 
 ## Phase 4b
 
@@ -599,7 +600,7 @@ Begin only after Phases 1 through 4b are complete.
 
 | Area | Current sub-phase | Status | Next after that |
 | --- | --- | --- | --- |
-| Phase 4 | Phase 4.2: Globals reduction | In progress | Continue dead-class audit batches, then move to Phase 4.3 |
+| Phase 4 | Phase 4.4: Feature section TS conversion | Ready | Convert feature sections, then revisit Phase 4.2/4.5 cleanup if needed |
 | Phase 4b | Phase 4b.1: Safety and feedback | Ready after Phase 4 foundation work | Phase 4b.2: Empty states and import confidence |
 
 ### Deferred for later
@@ -617,7 +618,7 @@ Begin only after Phases 1 through 4b are complete.
 - Phase 4 is now organized as sub-phases 4.1 through 4.5 in recommended execution order.
 - Phase 4b is now organized as sub-phases 4b.1 through 4b.5 in recommended execution order.
 - Accessibility and responsive hardening are intentionally grouped together as a later dedicated pass instead of being mixed into the next implementation step.
-- Next recommended task: continue Phase 4.2 dead-class audit batches until `globals.css` is closer to the Phase 4 target, then move to Phase 4.3.
+- Next recommended task: start Phase 4.4 by converting `settings`, `history`, and `batches` before tackling the larger `playground` file.
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
@@ -631,3 +632,4 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: Completed Phase 4.1 by deleting dead CSS files, consolidating stylesheet imports to `globals.css`, and merging the still-used token/typography rules from `tokens.css` and `base.css`.
 - 2026-04-14: Started Phase 4.2 and removed the first two verified dead-class batches from `globals.css`, including the legacy app-shell/sidebar/custom-tooltip layer and many zero-reference utility/button/toast/toggle/search classes.
 - 2026-04-14: Continued Phase 4.2 with a third verified batch removing the remaining zero-reference legacy result/card/list selectors and shrinking `globals.css` to 579 lines.
+- 2026-04-14: Completed Phase 4.3 by converting shared workspace-support components and low-risk pages to TypeScript, removing the `workspace-status` shim, and adding UI declaration shims for the still-JS `components/ui` layer.
