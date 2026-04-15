@@ -344,6 +344,7 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 - `base.css` mostly duplicated resets already present in `globals.css`, so the real Phase 4.1 merge work was preserving typography and full-height app-shell behavior.
 - Phase 4.2 can be executed as repeated audit batches: the first two verified batches removed the dead old app-shell/sidebar/custom-tooltip layer plus a broad set of zero-reference utility/button/toast/toggle/search classes.
 - After those batches, `styles/globals.css` dropped to 712 lines, down from roughly 1452 before Phase 4 started.
+- A third verified Phase 4.2 batch removed the remaining zero-reference legacy result/card/list classes and associated responsive overrides, bringing `styles/globals.css` down to 579 lines.
 
 **Carry-forward risks**
 
@@ -629,3 +630,4 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: Reorganized Phase 4 and 4b into ordered sub-phases (`4.1`-`4.5`, `4b.1`-`4b.5`), with accessibility/responsive hardening explicitly deferred into a later dedicated chunk.
 - 2026-04-14: Completed Phase 4.1 by deleting dead CSS files, consolidating stylesheet imports to `globals.css`, and merging the still-used token/typography rules from `tokens.css` and `base.css`.
 - 2026-04-14: Started Phase 4.2 and removed the first two verified dead-class batches from `globals.css`, including the legacy app-shell/sidebar/custom-tooltip layer and many zero-reference utility/button/toast/toggle/search classes.
+- 2026-04-14: Continued Phase 4.2 with a third verified batch removing the remaining zero-reference legacy result/card/list selectors and shrinking `globals.css` to 579 lines.
