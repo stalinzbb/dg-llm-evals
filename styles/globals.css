@@ -163,7 +163,6 @@ textarea {
   resize: vertical;
 }
 
-.brand-kicker,
 .section-label {
   color: var(--ink-muted);
   font-size: 0.72rem;
@@ -226,19 +225,6 @@ h6 {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-muted);
-}
-
-.brand-copy h1 {
-  font-size: 1.05rem;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--sidebar-text);
-}
-
-.brand-copy p {
-  margin-top: 4px;
-  color: var(--sidebar-muted);
-  font-size: 0.85rem;
 }
 
 .auth-card {
@@ -379,29 +365,6 @@ h6 {
 .primary-button {
   justify-content: center;
   font-weight: 600;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  padding: 13px 12px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-}
-
-th {
-  color: var(--ink-muted);
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-td {
-  color: var(--ink-soft);
 }
 
 .callout {
