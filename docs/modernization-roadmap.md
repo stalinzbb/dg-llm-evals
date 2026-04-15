@@ -12,7 +12,7 @@ The sequencing is intentional:
 4. Unify the design system and remove remaining CSS Modules.
 5. Migrate to the Next.js App Router last.
 
-Current overall phase: **Phase 4.1**
+Current overall phase: **Phase 4.2**
 
 ## Phase Summary
 
@@ -188,7 +188,7 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 
 ## Phase 4
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Eliminate dead CSS, resolve the token conflict, remove CSS Modules, and slim globals.css by replacing hand-rolled patterns with shadcn/Tailwind equivalents.
 
@@ -198,8 +198,8 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 
 | Sub-phase | Status | Priority | Scope | Why this comes next |
 | --- | --- | --- | --- | --- |
-| Phase 4.1: CSS foundation cleanup | Not started | Highest | Delete dead CSS files, merge `tokens.css` + `base.css` into `globals.css`, reduce `_app` to a single stylesheet import | Safest structural wins; unblocks every later styling and UI pass |
-| Phase 4.2: Globals reduction | Not started | High | Remove dead legacy classes from `globals.css` in audit batches | Still CSS-only work, and should happen immediately after the single-source-of-truth merge |
+| Phase 4.1: CSS foundation cleanup | Done | Highest | Delete dead CSS files, merge `tokens.css` + `base.css` into `globals.css`, reduce `_app` to a single stylesheet import | Safest structural wins; unblocks every later styling and UI pass |
+| Phase 4.2: Globals reduction | Ready | High | Remove dead legacy classes from `globals.css` in audit batches | Still CSS-only work, and should happen immediately after the single-source-of-truth merge |
 | Phase 4.3: Shared/component TS conversion | Not started | High | Convert shared workspace shell/support components and low-risk pages to `.tsx` | Low-risk code structure work once styling inputs stabilize |
 | Phase 4.4: Feature section TS conversion | Not started | Medium | Convert `settings`, `history`, `batches`, then `playground` to `.tsx` | Feature-owned work that benefits from the earlier shared/component conversion landing first |
 | Phase 4.5: Token reconciliation follow-through | Deferred to late Phase 4b | Medium | Clean up remaining semantic token usage after the UI polish work exposes what still matters | Full token reconciliation is easier once the final component surfaces and feedback patterns settle |
@@ -316,11 +316,11 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Checklist**
 
-- [ ] Phase 4.1: CSS foundation cleanup
-- [ ] Delete dead CSS Module files (`drawer-shell.module.css`, `library-drawer.module.css`)
-- [ ] Delete dead `layout.css`
-- [ ] Resolve token conflict: merge `tokens.css` into `globals.css`, delete `tokens.css`
-- [ ] Merge `base.css` typography into `globals.css`, delete `base.css`
+- [x] Phase 4.1: CSS foundation cleanup
+- [x] Delete dead CSS Module files (`drawer-shell.module.css`, `library-drawer.module.css`)
+- [x] Delete dead `layout.css`
+- [x] Resolve token conflict: merge `tokens.css` into `globals.css`, delete `tokens.css`
+- [x] Merge `base.css` typography into `globals.css`, delete `base.css`
 - [ ] Phase 4.2: Globals reduction
 - [ ] Audit and remove dead old-layout classes from `globals.css`
 - [ ] Audit and remove dead old-button/form/card classes from `globals.css`
@@ -340,7 +340,8 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Discovered during execution**
 
-- None yet.
+- `tokens.css` still carried active sidebar, topbar, and tag-selection variables even though its overlapping base tokens were overridden by `globals.css`; those variables were merged instead of dropped.
+- `base.css` mostly duplicated resets already present in `globals.css`, so the real Phase 4.1 merge work was preserving typography and full-height app-shell behavior.
 
 **Carry-forward risks**
 
@@ -349,7 +350,7 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 **Next session start point**
 
-Start with Phase 4.1 only (dead file deletion, token merge, base merge). Do not pull in TS conversion or UX polish during that pass.
+Start with Phase 4.2 only: audit old layout/button/form/card/table/misc classes in `globals.css` and remove them in small verified batches. Do not pull in TS conversion or UX polish during that pass.
 
 ## Phase 4b
 
@@ -595,7 +596,7 @@ Begin only after Phases 1 through 4b are complete.
 
 | Area | Current sub-phase | Status | Next after that |
 | --- | --- | --- | --- |
-| Phase 4 | Phase 4.1: CSS foundation cleanup | Ready | Phase 4.2: Globals reduction |
+| Phase 4 | Phase 4.2: Globals reduction | Ready | Phase 4.3: Shared/component TS conversion |
 | Phase 4b | Phase 4b.1: Safety and feedback | Ready after Phase 4 foundation work | Phase 4b.2: Empty states and import confidence |
 
 ### Deferred for later
@@ -613,7 +614,7 @@ Begin only after Phases 1 through 4b are complete.
 - Phase 4 is now organized as sub-phases 4.1 through 4.5 in recommended execution order.
 - Phase 4b is now organized as sub-phases 4b.1 through 4b.5 in recommended execution order.
 - Accessibility and responsive hardening are intentionally grouped together as a later dedicated pass instead of being mixed into the next implementation step.
-- Next recommended task: start Phase 4.1 only (delete dead files, resolve token conflict, merge base.css).
+- Next recommended task: start Phase 4.2 only (audit and remove dead legacy classes from `globals.css` in small batches).
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
@@ -624,3 +625,4 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: Split `components/workspace-sections.js` into feature-scoped files with explicit typed props, added shared section primitives/helpers, and removed the monolithic section module.
 - 2026-04-14: Expanded Phase 4 with detailed CSS audit (dead files, token conflict, ~900 lines of dead classes identified). Added Phase 4b for UX polish (confirmations, toasts, accessibility, empty states, result comparison, responsive fixes).
 - 2026-04-14: Reorganized Phase 4 and 4b into ordered sub-phases (`4.1`-`4.5`, `4b.1`-`4b.5`), with accessibility/responsive hardening explicitly deferred into a later dedicated chunk.
+- 2026-04-14: Completed Phase 4.1 by deleting dead CSS files, consolidating stylesheet imports to `globals.css`, and merging the still-used token/typography rules from `tokens.css` and `base.css`.
