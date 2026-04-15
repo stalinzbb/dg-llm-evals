@@ -199,7 +199,7 @@ Start Phase 4 by replacing the remaining CSS Modules and consolidating the secti
 | Sub-phase | Status | Priority | Scope | Why this comes next |
 | --- | --- | --- | --- | --- |
 | Phase 4.1: CSS foundation cleanup | Done | Highest | Delete dead CSS files, merge `tokens.css` + `base.css` into `globals.css`, reduce `_app` to a single stylesheet import | Safest structural wins; unblocks every later styling and UI pass |
-| Phase 4.2: Globals reduction | Ready | High | Remove dead legacy classes from `globals.css` in audit batches | Still CSS-only work, and should happen immediately after the single-source-of-truth merge |
+| Phase 4.2: Globals reduction | In progress | High | Remove dead legacy classes from `globals.css` in audit batches | Still CSS-only work, and should happen immediately after the single-source-of-truth merge |
 | Phase 4.3: Shared/component TS conversion | Not started | High | Convert shared workspace shell/support components and low-risk pages to `.tsx` | Low-risk code structure work once styling inputs stabilize |
 | Phase 4.4: Feature section TS conversion | Not started | Medium | Convert `settings`, `history`, `batches`, then `playground` to `.tsx` | Feature-owned work that benefits from the earlier shared/component conversion landing first |
 | Phase 4.5: Token reconciliation follow-through | Deferred to late Phase 4b | Medium | Clean up remaining semantic token usage after the UI polish work exposes what still matters | Full token reconciliation is easier once the final component surfaces and feedback patterns settle |
@@ -342,6 +342,8 @@ The workspace-sections are still `.js` despite having typed view-model contracts
 
 - `tokens.css` still carried active sidebar, topbar, and tag-selection variables even though its overlapping base tokens were overridden by `globals.css`; those variables were merged instead of dropped.
 - `base.css` mostly duplicated resets already present in `globals.css`, so the real Phase 4.1 merge work was preserving typography and full-height app-shell behavior.
+- Phase 4.2 can be executed as repeated audit batches: the first two verified batches removed the dead old app-shell/sidebar/custom-tooltip layer plus a broad set of zero-reference utility/button/toast/toggle/search classes.
+- After those batches, `styles/globals.css` dropped to 712 lines, down from roughly 1452 before Phase 4 started.
 
 **Carry-forward risks**
 
@@ -596,7 +598,7 @@ Begin only after Phases 1 through 4b are complete.
 
 | Area | Current sub-phase | Status | Next after that |
 | --- | --- | --- | --- |
-| Phase 4 | Phase 4.2: Globals reduction | Ready | Phase 4.3: Shared/component TS conversion |
+| Phase 4 | Phase 4.2: Globals reduction | In progress | Continue dead-class audit batches, then move to Phase 4.3 |
 | Phase 4b | Phase 4b.1: Safety and feedback | Ready after Phase 4 foundation work | Phase 4b.2: Empty states and import confidence |
 
 ### Deferred for later
@@ -614,7 +616,7 @@ Begin only after Phases 1 through 4b are complete.
 - Phase 4 is now organized as sub-phases 4.1 through 4.5 in recommended execution order.
 - Phase 4b is now organized as sub-phases 4b.1 through 4b.5 in recommended execution order.
 - Accessibility and responsive hardening are intentionally grouped together as a later dedicated pass instead of being mixed into the next implementation step.
-- Next recommended task: start Phase 4.2 only (audit and remove dead legacy classes from `globals.css` in small batches).
+- Next recommended task: continue Phase 4.2 dead-class audit batches until `globals.css` is closer to the Phase 4 target, then move to Phase 4.3.
 - Update `Status`, `Checklist`, `Discovered during execution`, `Decision Log`, and this section before ending each session.
 
 ## Completion Log
@@ -626,3 +628,4 @@ Begin only after Phases 1 through 4b are complete.
 - 2026-04-14: Expanded Phase 4 with detailed CSS audit (dead files, token conflict, ~900 lines of dead classes identified). Added Phase 4b for UX polish (confirmations, toasts, accessibility, empty states, result comparison, responsive fixes).
 - 2026-04-14: Reorganized Phase 4 and 4b into ordered sub-phases (`4.1`-`4.5`, `4b.1`-`4b.5`), with accessibility/responsive hardening explicitly deferred into a later dedicated chunk.
 - 2026-04-14: Completed Phase 4.1 by deleting dead CSS files, consolidating stylesheet imports to `globals.css`, and merging the still-used token/typography rules from `tokens.css` and `base.css`.
+- 2026-04-14: Started Phase 4.2 and removed the first two verified dead-class batches from `globals.css`, including the legacy app-shell/sidebar/custom-tooltip layer and many zero-reference utility/button/toast/toggle/search classes.
