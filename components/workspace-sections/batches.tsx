@@ -21,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createInitialVariant, downloadCsv, formatModelOption } from "@/lib/workspace";
 import { parseCsv, toCsv } from "@/lib/csv";
+import type { BatchSectionProps } from "@/lib/types/workspace";
+import { createInitialVariant, downloadCsv, formatModelOption } from "@/lib/workspace";
 import { getSourcePoolSummary } from "@/lib/workspace-selectors";
 
 import {
@@ -55,7 +56,7 @@ export function BatchSection({
   testCases,
   updateVariant,
   variants,
-}) {
+}: BatchSectionProps) {
   const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
 
   return (
@@ -64,7 +65,7 @@ export function BatchSection({
         actions={
           <Button
             disabled={batchGenerating || !promptTemplates.length}
-            onClick={() => handleBatchRun()}
+            onClick={() => void handleBatchRun()}
             type="button"
           >
             <BatchRunBoltIcon />
@@ -82,7 +83,7 @@ export function BatchSection({
               <Button
                 disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
                 onClick={() =>
-                  handleBatchRun({
+                  void handleBatchRun({
                     includeSavedCases: true,
                     includeImportedCases: false,
                     includeSourcePool: false,
@@ -111,15 +112,17 @@ export function BatchSection({
               </TableHeader>
               <TableBody>
                 {testCases.map((testCase) => (
-                  <TableRow key={testCase.id}>
+                  <TableRow key={testCase.id ?? `${testCase.organizationName}-${testCase.teamName}`}>
                     <TableCell>
                       <Checkbox
-                        checked={batchSelection.includes(testCase.id)}
+                        checked={Boolean(testCase.id && batchSelection.includes(testCase.id))}
                         onCheckedChange={(checked) =>
-                          setBatchSelection((current) =>
-                            checked
-                              ? [...current, testCase.id]
-                              : current.filter((id) => id !== testCase.id),
+                          setBatchSelection(
+                            !testCase.id
+                              ? batchSelection
+                              : checked
+                                ? [...batchSelection, testCase.id]
+                                : batchSelection.filter((id) => id !== testCase.id),
                           )
                         }
                       />
@@ -145,7 +148,7 @@ export function BatchSection({
                 <Button
                   disabled={batchGenerating || !promptTemplates.length || !importedCases.length}
                   onClick={() =>
-                    handleBatchRun({
+                    void handleBatchRun({
                       includeSavedCases: false,
                       includeImportedCases: true,
                       includeSourcePool: false,
@@ -169,14 +172,17 @@ export function BatchSection({
               <Input
                 accept=".csv,text/csv"
                 id="csv-import"
-                onChange={async (event) => {
+                onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (!file) {
                     return;
                   }
-                  const text = await file.text();
-                  const parsed = parseCsv(text).map(shapeImportedCase);
-                  setImportedCases(parsed);
+
+                  void file.text().then((text) => {
+                    const parsed = parseCsv(text).map(shapeImportedCase);
+                    setImportedCases(parsed);
+                  });
+                  event.target.value = "";
                 }}
                 type="file"
               />
@@ -188,7 +194,7 @@ export function BatchSection({
                 </Alert>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={handleSaveImportedCases}
+                    onClick={() => void handleSaveImportedCases()}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -220,7 +226,7 @@ export function BatchSection({
                     (Number(batchSampleCount) || 0) <= 0
                   }
                   onClick={() =>
-                    handleBatchRun({
+                    void handleBatchRun({
                       includeSavedCases: false,
                       includeImportedCases: false,
                       includeSourcePool: true,
@@ -263,8 +269,8 @@ export function BatchSection({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Source-pool batch rows get 1-3 random cause tags automatically and are used
-                only for that run.
+                Source-pool batch rows get 1-3 random cause tags automatically and are used only
+                for that run.
               </p>
             </SubSection>
           </SectionCard>
@@ -323,15 +329,15 @@ export function BatchSection({
                         onValueChange={(value) => updateVariant(variant.id, { promptSource: value })}
                         value={variant.promptSource}
                       >
-                        <SelectTrigger
-                          className="w-full"
-                          id={`${variant.id}-batch-prompt-source`}
-                        >
+                        <SelectTrigger className="w-full" id={`${variant.id}-batch-prompt-source`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {promptTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
+                            <SelectItem
+                              key={template.id ?? template.name}
+                              value={template.id ?? "current"}
+                            >
                               {template.name}
                             </SelectItem>
                           ))}

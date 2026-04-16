@@ -2,8 +2,13 @@ import { useEffect } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { WorkspaceStatusViewModel } from "@/lib/types/workspace";
 
-export default function WorkspaceStatus({ workspace }) {
+interface WorkspaceStatusProps {
+  workspace: WorkspaceStatusViewModel;
+}
+
+export default function WorkspaceStatus({ workspace }: WorkspaceStatusProps) {
   const message = workspace.errorMessage || workspace.statusMessage;
   const kind = workspace.errorMessage ? "error" : workspace.statusMessage ? "success" : null;
 
