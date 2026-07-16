@@ -74,3 +74,21 @@ create table if not exists source_pool (
 );
 
 create index if not exists source_pool_verified_idx on source_pool (is_verified);
+
+create table if not exists evals (
+  id text primary key,
+  name text not null,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists datasets (
+  id text primary key,
+  name text not null,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table runs add column if not exists eval_id text;

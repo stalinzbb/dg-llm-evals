@@ -13,6 +13,7 @@ import type {
   WorkspaceSettings,
 } from "@/lib/types/domain";
 import type { SourcePoolImportResponse, SourcePoolSampleResponse } from "@/lib/types/api";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
 
 type StoreModule = typeof localStore;
 
@@ -104,6 +105,40 @@ export function saveRating(entry: Rating): Promise<Rating> {
 
 export function getRunById(runId: string): Promise<Run | null> {
   return withFallback("getRunById", runId);
+}
+
+export function listEvals(): Promise<EvalDefinition[]> {
+  return withFallback("listEvals");
+}
+
+export function getEvalById(id: string): Promise<EvalDefinition | null> {
+  return withFallback("getEvalById", id);
+}
+
+export function saveEval(
+  entry: Partial<EvalDefinition> & { createdAt?: string },
+): Promise<EvalDefinition> {
+  return withFallback("saveEval", entry);
+}
+
+export function deleteEval(id: string): Promise<EvalDefinition[]> {
+  return withFallback("deleteEval", id);
+}
+
+export function listDatasets(): Promise<Dataset[]> {
+  return withFallback("listDatasets");
+}
+
+export function getDatasetById(id: string): Promise<Dataset | null> {
+  return withFallback("getDatasetById", id);
+}
+
+export function saveDataset(entry: Partial<Dataset> & { createdAt?: string }): Promise<Dataset> {
+  return withFallback("saveDataset", entry);
+}
+
+export function deleteDataset(id: string): Promise<Dataset[]> {
+  return withFallback("deleteDataset", id);
 }
 
 export function getSourcePoolStats(): Promise<SourcePoolStats> {

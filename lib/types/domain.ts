@@ -192,7 +192,11 @@ export interface SourcePoolRecord {
   updatedAt?: string;
 }
 
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+
 export interface BootstrapData {
+  evals: EvalDefinition[];
+  datasets: Dataset[];
   storageMode: "local" | "supabase";
   appSettingsStorageMode: "browser" | "supabase";
   appSettings: AppSettings;
