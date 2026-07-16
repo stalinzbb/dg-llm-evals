@@ -210,6 +210,7 @@ export function PlaygroundSection({
             <div className="grid gap-1.5">
               <Label htmlFor="active-eval">Eval</Label>
               <Select
+                items={Object.fromEntries(evals.map((item) => [item.id || "", item.name]))}
                 onValueChange={(value) => setActiveEvalId(value)}
                 value={activeEval?.id || ""}
               >
@@ -229,7 +230,11 @@ export function PlaygroundSection({
             {workingEval.templates.length > 1 ? (
               <div className="grid gap-1.5">
                 <Label htmlFor="active-template">Template</Label>
-                <Select onValueChange={setTemplateId} value={template?.id || ""}>
+                <Select
+                  items={Object.fromEntries(workingEval.templates.map((item) => [item.id, item.name]))}
+                  onValueChange={setTemplateId}
+                  value={template?.id || ""}
+                >
                   <SelectTrigger className="w-full" id="active-template">
                     <SelectValue />
                   </SelectTrigger>

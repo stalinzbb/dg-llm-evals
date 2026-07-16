@@ -337,6 +337,7 @@ export function EvalsSection({
                         <div className="grid gap-1.5">
                           <Label>Source</Label>
                           <Select
+                            items={{ manual: "Manual entry", random: "Random from dataset" }}
                             onValueChange={(value) =>
                               patchVariable(index, { defaultSource: value as "manual" | "random" })
                             }
@@ -354,6 +355,12 @@ export function EvalsSection({
                         <div className="grid gap-1.5">
                           <Label>Dataset</Label>
                           <Select
+                            items={{
+                              [NONE_DATASET]: "None",
+                              ...Object.fromEntries(
+                                datasets.map((dataset) => [dataset.id || "", dataset.name]),
+                              ),
+                            }}
                             onValueChange={(value) =>
                               patchVariable(index, { datasetId: value === NONE_DATASET ? null : value })
                             }

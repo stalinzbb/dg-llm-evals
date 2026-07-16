@@ -153,7 +153,11 @@ export function BatchSection({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="batch-eval">Eval</Label>
-              <Select onValueChange={(value) => setActiveEvalId(value)} value={activeEval.id || ""}>
+              <Select
+                items={Object.fromEntries(evals.map((item) => [item.id || "", item.name]))}
+                onValueChange={(value) => setActiveEvalId(value)}
+                value={activeEval.id || ""}
+              >
                 <SelectTrigger className="w-full" id="batch-eval">
                   <SelectValue />
                 </SelectTrigger>

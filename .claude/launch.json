@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "/Users/stalinthomas/.nvm/versions/node/v20.20.2/bin/node",
+      "runtimeArgs": ["node_modules/.bin/next", "dev", "-p", "3112"],
+      "port": 3112
+    }
+  ]
+}

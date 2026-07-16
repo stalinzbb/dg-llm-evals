@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { normalizeRuns } from "@/lib/runs";
-import { getBootstrapData } from "@/lib/store";
+import { getBootstrapData, listDatasets, listEvals } from "@/lib/store";
 import type { ApiErrorResponse, BootstrapResponse } from "@/lib/types/api";
 
 export default async function handler(
@@ -13,6 +13,9 @@ export default async function handler(
     res.status(200).json({
       ...payload,
       runs: normalizeRuns(payload.runs),
+      // When the Supabase evals/datasets tables are missing, fall back to the seeded local store.
+      evals: payload.evals?.length ? payload.evals : await listEvals(),
+      datasets: payload.datasets?.length ? payload.datasets : await listDatasets(),
       sourcePoolStats: payload?.sourcePoolStats || { total: 0, verified: 0, unverified: 0 },
       openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
       gateEnabled: Boolean(process.env.APP_ACCESS_PASSWORD),
