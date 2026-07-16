@@ -20,7 +20,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
     const client = createClient(url, key, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { error } = await client.from("app_settings").select("id").limit(1);
+    const { error } = await client.from("runs").select("id").limit(1);
     if (error) {
       throw error;
     }
