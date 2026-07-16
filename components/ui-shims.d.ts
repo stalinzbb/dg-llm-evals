@@ -95,6 +95,8 @@ declare module "@/components/ui/select" {
 
   export const Select: FC<{
     children?: ReactNode;
+    /** Value → display label map used by SelectValue to render the selected label. */
+    items?: Record<string, string>;
     onValueChange?: (value: string) => void;
     value?: string;
   }>;
