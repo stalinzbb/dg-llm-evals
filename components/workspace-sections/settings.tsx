@@ -19,7 +19,6 @@ import {
 import { MODEL_OPTIONS } from "@/lib/constants";
 import {
   getModelConfigurationState,
-  getSourcePoolSummary,
   sanitizeModelConfigurationIds,
 } from "@/lib/workspace-selectors";
 import type { SettingsSectionProps } from "@/lib/types/workspace";
@@ -28,10 +27,7 @@ import { SectionCard, SectionHead } from "./section-primitives";
 
 export function SettingsSection({
   enabledModelIds,
-  handleImportSourcePool,
   handleSaveSettings,
-  sourcePoolImporting,
-  sourcePoolStats,
 }: SettingsSectionProps) {
   const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
     sanitizeModelConfigurationIds(enabledModelIds),
@@ -64,8 +60,6 @@ export function SettingsSection({
     draftEnabledModelIds,
     enabledModelIds,
   );
-  const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
-
   function handleModelToggle(modelValue: string, checked: boolean) {
     setDraftEnabledModelIds((current) => {
       const currentIds = sanitizeModelConfigurationIds(current);
@@ -172,34 +166,6 @@ export function SettingsSection({
               })}
             </TableBody>
           </Table>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionHead subtitle={sourcePoolSummary} title="Source Pool Management" />
-          <p className="text-xs text-muted-foreground">
-            Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
-            TEAM_ACTIVITY, TEAM_AFFILIATION.
-          </p>
-          <div className="grid gap-1.5">
-            <Label htmlFor="source-pool-import">Upload Source CSV</Label>
-            <Input
-              accept=".csv,text/csv"
-              id="source-pool-import"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  void handleImportSourcePool(file);
-                }
-                event.target.value = "";
-              }}
-              type="file"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {sourcePoolImporting
-              ? "Importing and replacing the current source pool…"
-              : "Uploading replaces the current source pool."}
-          </p>
         </SectionCard>
       </div>
     </>

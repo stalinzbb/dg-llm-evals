@@ -12,10 +12,9 @@ import { getWorkspaceStatItems } from "@/lib/workspace-selectors";
 export function getWorkspaceStatsViewModel(workspace: WorkspaceState) {
   return getWorkspaceStatItems({
     platformStatus: workspace.platformStatus,
-    promptTemplateCount: workspace.promptTemplates.length,
+    evalCount: workspace.evals.length,
+    datasetCount: workspace.datasets.length,
     runCount: workspace.runs.length,
-    sourcePoolStats: workspace.sourcePoolStats,
-    testCaseCount: workspace.testCases.length,
     workspaceSaveState: workspace.workspaceSaveState,
   });
 }
@@ -95,9 +94,6 @@ export function getHistorySectionProps(workspace: WorkspaceState): HistorySectio
 export function getSettingsSectionProps(workspace: WorkspaceState): SettingsSectionProps {
   return {
     enabledModelIds: workspace.enabledModelIds,
-    handleImportSourcePool: workspace.handleImportSourcePool,
     handleSaveSettings: workspace.handleSaveSettings,
-    sourcePoolImporting: workspace.sourcePoolImporting,
-    sourcePoolStats: workspace.sourcePoolStats,
   };
 }

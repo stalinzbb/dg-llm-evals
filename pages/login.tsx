@@ -64,8 +64,8 @@ export default function LoginPage() {
             </div>
             <h1>Open Eval AI.</h1>
             <p className="mt-2 max-w-[68ch] text-[color:var(--ink-soft)]">
-              A lightweight internal tool for prompt experiments, batch runs, and saved output
-              review across fundraiser messaging workflows.
+              A lightweight tool for building evals, running prompt experiments and batch runs,
+              and reviewing saved outputs across models.
             </p>
             <div className="mt-[22px] grid gap-3 sm:grid-cols-2 max-[720px]:grid-cols-1">
               <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--surface-muted)] p-4">

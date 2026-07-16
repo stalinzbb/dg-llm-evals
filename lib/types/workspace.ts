@@ -3,10 +3,7 @@ import type {
   GenerationSettings,
   ModelOption,
   PlatformStatus,
-  PromptTemplate,
   Run,
-  SourcePoolStats,
-  TestCase,
   Theme,
   Variant,
   WorkspacePage,
@@ -14,6 +11,8 @@ import type {
 } from "@/lib/types/domain";
 import type { SaveRatingRequest } from "@/lib/types/api";
 import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+
+export interface WorkspaceSnapshot extends AppSettings {}
 
 /** Input for eval-based runs assembled by the sections; shared run config is filled in by actions. */
 export interface EvalRunInput {
@@ -27,100 +26,45 @@ export interface EvalRunInput {
   columnMapping?: Record<string, string> | null;
 }
 
-export interface WorkspaceSnapshot extends AppSettings {}
-
-export interface HandleBatchRunOptions {
-  includeSavedCases?: boolean;
-  includeImportedCases?: boolean;
-  includeSourcePool?: boolean;
-}
-
-export interface WorkspaceDerivedState {
-  availableModelOptions: ModelOption[];
-  canSaveCase: boolean;
-  canSavePrompt: boolean;
-  defaultEnabledModelId: string;
-  enabledModelIds: string[];
-  filteredRuns: Run[];
-  playgroundMode: "single" | "compare";
-  selectedRun: Run | null;
-}
-
 export interface WorkspaceState {
   activePage: WorkspacePage;
+  activeEvalId: string;
   availableModelOptions: ModelOption[];
   batchGenerating: boolean;
-  batchSampleCount: string;
-  batchSelection: string[];
-  batchVerificationFilter: string;
-  canSaveCase: boolean;
-  canSavePrompt: boolean;
-  caseDraft: TestCase;
-  causeTagOptions: string[];
+  datasets: Dataset[];
   defaultEnabledModelId: string;
   dismissMessage: (kind: "error" | "success") => void;
   enabledModelIds: string[];
   errorMessage: string;
+  evals: EvalDefinition[];
   filteredRuns: Run[];
   generationSettings: GenerationSettings;
-  handleBatchRun: (options?: {
-    includeSavedCases?: boolean;
-    includeImportedCases?: boolean;
-    includeSourcePool?: boolean;
-  }) => Promise<void>;
-  handleDeleteCase: (id: string) => Promise<void>;
-  handleDeletePrompt: (id: string) => Promise<void>;
-  handleGenerate: () => Promise<void>;
-  handleEvalGenerate: (input: EvalRunInput) => Promise<void>;
-  handleEvalBatchRun: (input: EvalRunInput) => Promise<void>;
-  handleSaveEval: (entry: Partial<EvalDefinition>) => Promise<EvalDefinition | null>;
-  handleDeleteEval: (id: string) => Promise<void>;
-  handleSaveDataset: (entry: Partial<Dataset>) => Promise<Dataset | null>;
   handleDeleteDataset: (id: string) => Promise<void>;
-  evals: EvalDefinition[];
-  datasets: Dataset[];
-  activeEvalId: string;
-  setActiveEvalId: (id: string) => void;
-  handleImportSourcePool: (file: File | null) => Promise<void>;
-  handleRandomizeCaseFromSourcePool: () => Promise<void>;
-  handleRandomizeCauseTags: () => void;
-  handleSaveCase: (singleCase: TestCase) => Promise<void>;
-  handleSaveImportedCases: () => Promise<void>;
-  handleSavePrompt: () => Promise<void>;
+  handleDeleteEval: (id: string) => Promise<void>;
+  handleEvalBatchRun: (input: EvalRunInput) => Promise<void>;
+  handleEvalGenerate: (input: EvalRunInput) => Promise<void>;
+  handleSaveDataset: (entry: Partial<Dataset>) => Promise<Dataset | null>;
+  handleSaveEval: (entry: Partial<EvalDefinition>) => Promise<EvalDefinition | null>;
   handleSaveRating: (payload: SaveRatingRequest) => Promise<void>;
   handleSaveSettings: (settings: Partial<WorkspaceSettings>) => Promise<void>;
   historySearch: string;
-  importedCases: TestCase[];
   loading: boolean;
-  normalizeTestCase: (input?: Partial<TestCase>) => TestCase;
   platformStatus: PlatformStatus;
   playgroundGenerating: boolean;
   playgroundMode: "single" | "compare";
-  playgroundRandomizing: boolean;
   playgroundRun: Run | null;
-  promptDraft: PromptTemplate;
-  promptTemplates: PromptTemplate[];
   runs: Run[];
   selectedRun: Run | null;
   selectedRunId: string;
+  setActiveEvalId: (id: string) => void;
   setActivePage: (page: WorkspacePage) => void;
-  setBatchSampleCount: (value: string) => void;
-  setBatchSelection: (value: string[]) => void;
-  setBatchVerificationFilter: (value: string) => void;
-  setCaseDraft: React.Dispatch<React.SetStateAction<TestCase>>;
   setGenerationSettings: React.Dispatch<React.SetStateAction<GenerationSettings>>;
   setHistorySearch: (value: string) => void;
-  setImportedCases: React.Dispatch<React.SetStateAction<TestCase[]>>;
-  setPromptDraft: React.Dispatch<React.SetStateAction<PromptTemplate>>;
   setSelectedRunId: (value: string) => void;
   setVariants: React.Dispatch<React.SetStateAction<Variant[]>>;
   settings: WorkspaceSettings;
-  shapeImportedCase: (record: Record<string, string>) => TestCase;
-  sourcePoolImporting: boolean;
-  sourcePoolStats: SourcePoolStats;
   statusMessage: string;
   storageMode: string;
-  testCases: TestCase[];
   theme: Theme;
   toggleTheme: () => void;
   updateVariant: (id: string, patch: Partial<Variant>) => void;
@@ -197,10 +141,7 @@ export interface HistorySectionProps {
 
 export interface SettingsSectionProps {
   enabledModelIds: WorkspaceState["enabledModelIds"];
-  handleImportSourcePool: WorkspaceState["handleImportSourcePool"];
   handleSaveSettings: WorkspaceState["handleSaveSettings"];
-  sourcePoolImporting: WorkspaceState["sourcePoolImporting"];
-  sourcePoolStats: WorkspaceState["sourcePoolStats"];
 }
 
 export interface WorkspaceHomeProps {

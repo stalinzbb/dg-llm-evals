@@ -1,3 +1,5 @@
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+
 export interface ModelOption {
   label: string;
   value: string;
@@ -39,33 +41,6 @@ export interface NormalizedVariant {
   topP: number | null;
   maxTokens: number | null;
   seed: string;
-}
-
-export interface TestCase {
-  id: string | null;
-  sourceRecordId: string | null;
-  sourceType: string | null;
-  organizationUuid: string | null;
-  isVerified: boolean;
-  name: string;
-  organizationName: string;
-  teamName: string;
-  organizationType: string;
-  teamActivity: string;
-  teamAffiliation: string;
-  causeTags: string[];
-  messageLength: string;
-}
-
-export interface PromptTemplate {
-  id: string | null;
-  name: string;
-  systemPrompt: string;
-  userPromptTemplate: string;
-  prefixText: string;
-  suffixText: string;
-  messageLengthInstruction: string;
-  isActive: boolean;
 }
 
 export type RunMode = "single" | "compare" | "batch";
@@ -112,7 +87,7 @@ export interface RunResult {
   pricing: PricingInfo | null;
   provider: string;
   /** Legacy fundraiser-case snapshot; present on runs created before evals existed. */
-  inputSnapshot?: TestCase | null;
+  inputSnapshot?: Record<string, unknown> | null;
   /** Resolved template variable values used for this result. */
   variableValues?: Record<string, string>;
   /** Where each variable value came from (manual | random | csv | default | empty). */
@@ -134,8 +109,6 @@ export interface RunRecordPayload {
   evalId?: string | null;
   evalSnapshot?: EvalDefinition;
   templateId?: string;
-  caseSnapshot?: TestCase;
-  promptSnapshot?: PromptTemplate;
   variantConfigs?: NormalizedVariant[];
   generationDefaults?: GenerationSettings;
   caseCount?: number;
@@ -162,12 +135,8 @@ export type Theme = "light" | "dark";
 export interface AppSettings {
   activeTab: WorkspacePage;
   playgroundMode: PlaygroundMode;
-  caseDraft: TestCase;
-  promptDraft: PromptTemplate;
   generationSettings: GenerationSettings;
   variants: Variant[];
-  batchSelection: string[];
-  importedCases: TestCase[];
 }
 
 export interface WorkspaceSettings {
@@ -179,41 +148,15 @@ export interface PlatformStatus {
   gateEnabled: boolean;
 }
 
-export interface SourcePoolStats {
-  total: number;
-  verified: number;
-  unverified: number;
-}
-
-export interface SourcePoolRecord {
-  id: string;
-  importBatchId: string;
-  name: string;
-  organizationName: string;
-  teamName: string;
-  organizationUuid: string | null;
-  isVerified: boolean;
-  organizationType: string;
-  teamActivity: string;
-  teamAffiliation: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-import type { Dataset, EvalDefinition } from "@/lib/types/eval";
-
 export interface BootstrapData {
-  evals: EvalDefinition[];
-  datasets: Dataset[];
   storageMode: "local" | "supabase";
   appSettingsStorageMode: "browser" | "supabase";
   appSettings: AppSettings;
   workspaceSettingsStorageMode: "browser" | "supabase";
   settings: WorkspaceSettings;
-  testCases: TestCase[];
-  promptTemplates: PromptTemplate[];
+  evals: EvalDefinition[];
+  datasets: Dataset[];
   runs: Run[];
-  sourcePoolStats: SourcePoolStats;
 }
 
 export interface OpenRouterCompletionUsage {

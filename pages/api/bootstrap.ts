@@ -16,7 +16,6 @@ export default async function handler(
       // When the Supabase evals/datasets tables are missing, fall back to the seeded local store.
       evals: payload.evals?.length ? payload.evals : await listEvals(),
       datasets: payload.datasets?.length ? payload.datasets : await listDatasets(),
-      sourcePoolStats: payload?.sourcePoolStats || { total: 0, verified: 0, unverified: 0 },
       openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
       gateEnabled: Boolean(process.env.APP_ACCESS_PASSWORD),
     });

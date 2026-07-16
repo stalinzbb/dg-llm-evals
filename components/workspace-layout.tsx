@@ -103,7 +103,7 @@ export default function WorkspaceLayout({
       <Head>
         <title>{title || "Eval AI"}</title>
         <meta
-          content={description || "Generate, compare, and batch-evaluate fundraiser messages."}
+          content={description || "Build evals, compare models, and batch-evaluate LLM content."}
           name="description"
         />
         <meta content="width=device-width, initial-scale=1" name="viewport" />

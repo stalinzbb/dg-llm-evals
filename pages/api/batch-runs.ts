@@ -1,13 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { executeBatchRun, executeEvalRun } from "@/lib/runner";
+import { executeEvalRun } from "@/lib/runner";
 import { getRequestApiKey } from "@/pages/api/generate";
-import type {
-  ApiErrorResponse,
-  BatchRunRequest,
-  EvalRunRequest,
-  RunResponse,
-} from "@/lib/types/api";
+import type { ApiErrorResponse, EvalRunRequest, RunResponse } from "@/lib/types/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,12 +15,12 @@ export default async function handler(
   }
 
   try {
-    const body = req.body as (BatchRunRequest & EvalRunRequest) | undefined;
-    const options = { apiKey: getRequestApiKey(req) };
-    const isEvalRun = Boolean(body?.evalId || body?.evalDraft);
-    const run = isEvalRun
-      ? await executeEvalRun(body as EvalRunRequest, options)
-      : await executeBatchRun(body as BatchRunRequest, options);
+    const body = req.body as EvalRunRequest;
+    if (!body?.csvRows?.length) {
+      res.status(400).json({ error: "Import a CSV with at least one row to run a batch." });
+      return;
+    }
+    const run = await executeEvalRun(body, { apiKey: getRequestApiKey(req) });
     if (!run) {
       res.status(500).json({ error: "Batch run completed without a run payload." });
       return;

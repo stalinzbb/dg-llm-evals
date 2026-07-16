@@ -5,23 +5,6 @@ create table if not exists app_settings (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists test_cases (
-  id text primary key,
-  name text not null,
-  payload jsonb not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists prompt_templates (
-  id text primary key,
-  name text not null,
-  is_active boolean not null default true,
-  payload jsonb not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
 create table if not exists workspace_settings (
   id text primary key,
   payload jsonb not null,
@@ -57,24 +40,6 @@ create table if not exists ratings (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists source_pool (
-  id text primary key,
-  import_batch_id text not null,
-  name text not null,
-  organization_name text,
-  team_name text,
-  organization_uuid text,
-  is_verified boolean not null default false,
-  organization_type text not null,
-  team_activity text,
-  team_affiliation text,
-  payload jsonb not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists source_pool_verified_idx on source_pool (is_verified);
-
 create table if not exists evals (
   id text primary key,
   name text not null,
@@ -92,3 +57,9 @@ create table if not exists datasets (
 );
 
 alter table runs add column if not exists eval_id text;
+
+-- Legacy tables from the fundraiser-specific era (test_cases, prompt_templates,
+-- source_pool) are no longer used. Existing installs can drop them:
+--   drop table if exists test_cases;
+--   drop table if exists prompt_templates;
+--   drop table if exists source_pool;
