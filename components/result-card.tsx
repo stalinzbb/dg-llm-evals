@@ -94,11 +94,11 @@ export default function ResultCard({
     }
   }
 
-  const message = view === "cause" ? result.causeStatement : result.fullMessage;
+  const message = view === "cause" ? result.output : result.wrappedOutput;
   const characterCount =
     view === "cause"
-      ? result.metrics?.causeOnlyCharacters || 0
-      : result.metrics?.fullMessageCharacters || 0;
+      ? result.metrics?.outputCharacters || 0
+      : result.metrics?.wrappedOutputCharacters || 0;
 
   return (
     <Card className="gap-0">

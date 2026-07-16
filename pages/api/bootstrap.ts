@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { normalizeRuns } from "@/lib/runs";
 import { getBootstrapData } from "@/lib/store";
 import type { ApiErrorResponse, BootstrapResponse } from "@/lib/types/api";
 
@@ -11,6 +12,7 @@ export default async function handler(
     const payload = await getBootstrapData();
     res.status(200).json({
       ...payload,
+      runs: normalizeRuns(payload.runs),
       sourcePoolStats: payload?.sourcePoolStats || { total: 0, verified: 0, unverified: 0 },
       openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
       gateEnabled: Boolean(process.env.APP_ACCESS_PASSWORD),

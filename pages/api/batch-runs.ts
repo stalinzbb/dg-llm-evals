@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { executeBatchRun } from "@/lib/runner";
-import type { ApiErrorResponse, BatchRunRequest, RunResponse } from "@/lib/types/api";
+import { executeBatchRun, executeEvalRun } from "@/lib/runner";
+import { getRequestApiKey } from "@/pages/api/generate";
+import type {
+  ApiErrorResponse,
+  BatchRunRequest,
+  EvalRunRequest,
+  RunResponse,
+} from "@/lib/types/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +20,12 @@ export default async function handler(
   }
 
   try {
-    const run = await executeBatchRun(req.body as BatchRunRequest);
+    const body = req.body as (BatchRunRequest & EvalRunRequest) | undefined;
+    const options = { apiKey: getRequestApiKey(req) };
+    const isEvalRun = Boolean(body?.evalId || body?.evalDraft);
+    const run = isEvalRun
+      ? await executeEvalRun(body as EvalRunRequest, options)
+      : await executeBatchRun(body as BatchRunRequest, options);
     if (!run) {
       res.status(500).json({ error: "Batch run completed without a run payload." });
       return;

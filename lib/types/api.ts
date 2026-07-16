@@ -66,6 +66,23 @@ export interface GenerateRunRequest {
   variants: Variant[];
 }
 
+export interface EvalRunRequest {
+  mode?: "single" | "compare";
+  label?: string;
+  /** Saved eval to run; when absent, evalDraft is used. */
+  evalId?: string | null;
+  /** Unsaved eval definition (draft) to run directly. */
+  evalDraft?: Partial<import("@/lib/types/eval").EvalDefinition>;
+  /** Which template in the eval to run; defaults to the first. */
+  templateId?: string;
+  manualValues?: Record<string, string>;
+  csvRows?: Record<string, string>[] | null;
+  columnMapping?: Record<string, string> | null;
+  generationSettings: GenerationSettings;
+  settings?: WorkspaceSettings;
+  variants: Variant[];
+}
+
 export interface BatchRunRequest {
   label?: string;
   caseIds?: string[];

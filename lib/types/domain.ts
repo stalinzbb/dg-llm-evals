@@ -77,8 +77,8 @@ export interface RunMetrics {
   totalTokens: number;
   estimatedCost: number | null | "";
   latencyMs: number | "";
-  causeOnlyCharacters?: number;
-  fullMessageCharacters?: number;
+  outputCharacters?: number;
+  wrappedOutputCharacters?: number;
 }
 
 export interface PricingInfo {
@@ -106,12 +106,17 @@ export interface RunResult {
   userPrompt: string;
   prefixText: string;
   suffixText: string;
-  causeStatement: string;
-  fullMessage: string;
+  output: string;
+  wrappedOutput: string;
   metrics: RunMetrics;
   pricing: PricingInfo | null;
   provider: string;
-  inputSnapshot: TestCase;
+  /** Legacy fundraiser-case snapshot; present on runs created before evals existed. */
+  inputSnapshot?: TestCase | null;
+  /** Resolved template variable values used for this result. */
+  variableValues?: Record<string, string>;
+  /** Where each variable value came from (manual | random | csv | default | empty). */
+  variableSources?: Record<string, string>;
   error: string | null;
 }
 
@@ -126,6 +131,9 @@ export interface Rating {
 }
 
 export interface RunRecordPayload {
+  evalId?: string | null;
+  evalSnapshot?: EvalDefinition;
+  templateId?: string;
   caseSnapshot?: TestCase;
   promptSnapshot?: PromptTemplate;
   variantConfigs?: NormalizedVariant[];
@@ -216,7 +224,7 @@ export interface OpenRouterCompletionUsage {
 
 export interface OpenRouterCompletionResult {
   provider: string;
-  causeStatement: string;
+  output: string;
   usage: OpenRouterCompletionUsage;
   estimatedCost: number | null;
   latencyMs: number;

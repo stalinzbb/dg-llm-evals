@@ -5,6 +5,26 @@ import type { AppSettings, Theme, WorkspaceSettings } from "@/lib/types/domain";
 export const APP_SETTINGS_STORAGE_KEY = "dg-evals-app-settings-v1";
 export const MODEL_SETTINGS_STORAGE_KEY = "dg-evals-model-settings-v1";
 export const THEME_STORAGE_KEY = "dg-evals-theme";
+export const OPENROUTER_KEY_STORAGE_KEY = "dg-evals-openrouter-key";
+
+/** Bring-your-own-key: stored only in this browser, sent per-request, never persisted server-side. */
+export function readStoredOpenRouterKey(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return window.localStorage.getItem(OPENROUTER_KEY_STORAGE_KEY) || "";
+}
+
+export function writeStoredOpenRouterKey(key: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (key.trim()) {
+    window.localStorage.setItem(OPENROUTER_KEY_STORAGE_KEY, key.trim());
+  } else {
+    window.localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
+  }
+}
 
 export function readBrowserAppSettings(fallback: AppSettings): AppSettings {
   if (typeof window === "undefined") {

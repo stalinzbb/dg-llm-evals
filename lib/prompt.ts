@@ -159,16 +159,19 @@ export function renderUserPrompt(testCase: TestCase, promptTemplate: PromptTempl
   return `${promptTemplate.userPromptTemplate}\n\n${details}`;
 }
 
-export function buildFullMessage(promptTemplate: PromptTemplate, causeStatement: string): string {
-  const pieces = [promptTemplate.prefixText, causeStatement, promptTemplate.suffixText]
+export function buildWrappedOutput(
+  template: { prefixText?: string; suffixText?: string },
+  output: string,
+): string {
+  const pieces = [template.prefixText, output, template.suffixText]
     .map((item) => item?.trim())
     .filter(Boolean);
   return pieces.join(" ");
 }
 
-export function scoreCharacterCounts(causeStatement: string, fullMessage: string) {
+export function scoreCharacterCounts(output: string, wrappedOutput: string) {
   return {
-    causeOnlyCharacters: causeStatement.length,
-    fullMessageCharacters: fullMessage.length,
+    outputCharacters: output.length,
+    wrappedOutputCharacters: wrappedOutput.length,
   };
 }
