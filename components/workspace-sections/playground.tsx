@@ -430,7 +430,7 @@ export function PlaygroundSection({
 
           <div className="grid gap-4">
             {variants.map((variant, index) => (
-              <Card className="gap-0" key={variant.id}>
+              <Card className="gap-0 bg-muted/30 py-0" key={variant.id}>
                 <CardContent className="grid gap-4 p-4">
                   <div className="grid grid-cols-2 gap-3">
                     <Field

@@ -320,93 +320,101 @@ export function EvalsSection({
                 <SubSection title="Variables">
                   <div className="grid gap-2">
                     {draft.variables.map((variable, index) => (
-                      <div
-                        className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_1fr_130px_1fr_1fr_auto]"
-                        key={index}
-                      >
-                        <Field
-                          label="Key"
-                          onChange={(value) => patchVariable(index, { key: value })}
-                          value={variable.key}
-                        />
-                        <Field
-                          label="Label"
-                          onChange={(value) => patchVariable(index, { label: value })}
-                          value={variable.label}
-                        />
-                        <div className="grid gap-1.5">
-                          <Label>Source</Label>
-                          <Select
-                            items={{ manual: "Manual entry", random: "Random from dataset" }}
-                            onValueChange={(value) =>
-                              patchVariable(index, { defaultSource: value as "manual" | "random" })
-                            }
-                            value={variable.defaultSource}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="manual">Manual entry</SelectItem>
-                              <SelectItem value="random">Random from dataset</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-1.5">
-                          <Label>Dataset</Label>
-                          <Select
-                            items={{
-                              [NONE_DATASET]: "None",
-                              ...Object.fromEntries(
-                                datasets.map((dataset) => [dataset.id || "", dataset.name]),
-                              ),
-                            }}
-                            onValueChange={(value) =>
-                              patchVariable(index, { datasetId: value === NONE_DATASET ? null : value })
-                            }
-                            value={variable.datasetId || NONE_DATASET}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={NONE_DATASET}>None</SelectItem>
-                              {datasets.map((dataset) => (
-                                <SelectItem key={dataset.id || dataset.name} value={dataset.id || ""}>
-                                  {dataset.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Field
-                          label="Default value"
-                          onChange={(value) => patchVariable(index, { defaultValue: value })}
-                          value={variable.defaultValue}
-                        />
-                        <div className="flex items-center gap-3 pb-1">
-                          <div className="flex items-center gap-1.5">
-                            <Checkbox
-                              checked={variable.required}
-                              id={`required-${index}`}
-                              onCheckedChange={(checked) =>
-                                patchVariable(index, { required: Boolean(checked) })
+                      <div className="grid gap-4 rounded-lg border bg-muted/30 p-4" key={index}>
+                        <div className="flex items-center justify-between gap-3">
+                          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                            {`{{${variable.key || "…"}}}`}
+                          </code>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                              <Checkbox
+                                checked={variable.required}
+                                id={`required-${index}`}
+                                onCheckedChange={(checked) =>
+                                  patchVariable(index, { required: Boolean(checked) })
+                                }
+                              />
+                              <Label className="text-xs font-normal" htmlFor={`required-${index}`}>
+                                Required
+                              </Label>
+                            </div>
+                            <Button
+                              onClick={() =>
+                                patchDraft({ variables: draft.variables.filter((_, i) => i !== index) })
                               }
-                            />
-                            <Label className="text-xs" htmlFor={`required-${index}`}>
-                              Required
-                            </Label>
+                              size="sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              Remove
+                            </Button>
                           </div>
-                          <Button
-                            onClick={() =>
-                              patchDraft({ variables: draft.variables.filter((_, i) => i !== index) })
-                            }
-                            size="sm"
-                            type="button"
-                            variant="ghost"
-                          >
-                            Remove
-                          </Button>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Field
+                            label="Key"
+                            onChange={(value) => patchVariable(index, { key: value })}
+                            placeholder="e.g. org.name"
+                            value={variable.key}
+                          />
+                          <Field
+                            label="Label"
+                            onChange={(value) => patchVariable(index, { label: value })}
+                            placeholder="Shown on run forms"
+                            value={variable.label}
+                          />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="grid gap-1.5">
+                            <Label>Source</Label>
+                            <Select
+                              items={{ manual: "Manual entry", random: "Random from dataset" }}
+                              onValueChange={(value) =>
+                                patchVariable(index, { defaultSource: value as "manual" | "random" })
+                              }
+                              value={variable.defaultSource}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="manual">Manual entry</SelectItem>
+                                <SelectItem value="random">Random from dataset</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label>Dataset</Label>
+                            <Select
+                              items={{
+                                [NONE_DATASET]: "None",
+                                ...Object.fromEntries(
+                                  datasets.map((dataset) => [dataset.id || "", dataset.name]),
+                                ),
+                              }}
+                              onValueChange={(value) =>
+                                patchVariable(index, { datasetId: value === NONE_DATASET ? null : value })
+                              }
+                              value={variable.datasetId || NONE_DATASET}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NONE_DATASET}>None</SelectItem>
+                                {datasets.map((dataset) => (
+                                  <SelectItem key={dataset.id || dataset.name} value={dataset.id || ""}>
+                                    {dataset.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Field
+                            label="Default value"
+                            onChange={(value) => patchVariable(index, { defaultValue: value })}
+                            value={variable.defaultValue}
+                          />
                         </div>
                       </div>
                     ))}

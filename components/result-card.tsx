@@ -81,8 +81,8 @@ export default function ResultCard({
       : result.metrics?.wrappedOutputCharacters || 0;
 
   return (
-    <Card className="gap-0">
-      <CardContent className="grid gap-4 pt-4">
+    <Card className="gap-0 py-0">
+      <CardContent className="grid gap-4 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-medium text-foreground">{result.variantLabel}</p>

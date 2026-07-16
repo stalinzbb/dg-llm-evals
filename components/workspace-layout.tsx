@@ -210,7 +210,9 @@ export default function WorkspaceLayout({
               {currentPage}
             </span>
           </header>
-          <div className="flex-1 overflow-y-auto p-6">{children}</div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-6xl px-6 py-8 lg:px-8">{children}</div>
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </>
