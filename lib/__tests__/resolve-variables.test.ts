@@ -19,7 +19,16 @@ const evalDef = normalizeEvalDefinition({
     { key: "tone", label: "Tone", defaultSource: "random", datasetId: "dataset_tones", defaultValue: "", required: false },
     { key: "audience", label: "Audience", defaultSource: "manual", datasetId: null, defaultValue: "general readers", required: false },
   ],
-  templates: [{ userPromptTemplate: "Write about {{topic}} in a {{tone}} tone for {{audience}}." }],
+  templates: [
+    {
+      id: "template-1",
+      name: "Template 1",
+      systemPrompt: "",
+      userPromptTemplate: "Write about {{topic}} in a {{tone}} tone for {{audience}}.",
+      prefixText: "",
+      suffixText: "",
+    },
+  ],
 });
 
 describe("resolveVariables", () => {

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { readStoredOpenRouterKey, writeStoredOpenRouterKey } from "@/lib/workspace-browser";
+
 import WorkspacePageHeader from "@/components/workspace-page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,10 +36,29 @@ export function SettingsSection({
   const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
     sanitizeModelConfigurationIds(enabledModelIds),
   );
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState("");
 
   useEffect(() => {
     setDraftEnabledModelIds(sanitizeModelConfigurationIds(enabledModelIds));
   }, [enabledModelIds]);
+
+  useEffect(() => {
+    const storedKey = readStoredOpenRouterKey();
+    setApiKeyDraft(storedKey);
+    setApiKeySaved(Boolean(storedKey));
+  }, []);
+
+  function handleSaveApiKey() {
+    writeStoredOpenRouterKey(apiKeyDraft);
+    setApiKeySaved(Boolean(apiKeyDraft.trim()));
+    setApiKeyStatus(
+      apiKeyDraft.trim()
+        ? "Key saved in this browser. It is sent with each run and never stored on the server."
+        : "Key removed from this browser.",
+    );
+  }
 
   const { enabledRunnableCount, hasChanges, selectedEnabledIds } = getModelConfigurationState(
     draftEnabledModelIds,
@@ -63,6 +84,33 @@ export function SettingsSection({
       />
 
       <div className="grid gap-6">
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button onClick={handleSaveApiKey} size="sm" type="button">
+                Save key
+              </Button>
+            }
+            subtitle="Bring your own OpenRouter API key. Stored only in this browser's localStorage and attached per-request; without it, runs use the server key if configured, otherwise mock output."
+            title="OpenRouter API Key"
+          />
+          <div className="grid gap-1.5">
+            <Label htmlFor="openrouter-key">API key {apiKeySaved ? "(saved in this browser)" : ""}</Label>
+            <Input
+              autoComplete="off"
+              id="openrouter-key"
+              onChange={(event) => setApiKeyDraft(event.target.value)}
+              placeholder="sk-or-v1-…"
+              type="password"
+              value={apiKeyDraft}
+            />
+            {apiKeyStatus ? <p className="text-xs text-muted-foreground">{apiKeyStatus}</p> : null}
+            <p className="text-xs text-muted-foreground">
+              Get a key at openrouter.ai — one key unlocks every model in the list below.
+            </p>
+          </div>
+        </SectionCard>
+
         <SectionCard>
           <SectionHead
             action={

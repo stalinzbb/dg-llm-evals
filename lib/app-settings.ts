@@ -74,6 +74,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       : "";
   const activeTab =
     rawActiveTab === "playground" ||
+    rawActiveTab === "evals" ||
     rawActiveTab === "batch" ||
     rawActiveTab === "batches" ||
     rawActiveTab === "history" ||

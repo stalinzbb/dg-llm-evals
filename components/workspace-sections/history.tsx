@@ -118,6 +118,7 @@ export function HistorySection({
                     key={result.id}
                     onSaveRating={handleSaveRating}
                     result={{ ...result, runId: selectedRun.id }}
+                    rubric={selectedRun.payload?.evalSnapshot?.rubric}
                   />
                 ))}
               </div>

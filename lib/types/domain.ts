@@ -155,7 +155,7 @@ export interface Run {
   ratings: Rating[];
 }
 
-export type WorkspacePage = "playground" | "batches" | "history" | "settings";
+export type WorkspacePage = "playground" | "evals" | "batches" | "history" | "settings";
 export type PlaygroundMode = "single" | "compare";
 export type Theme = "light" | "dark";
 

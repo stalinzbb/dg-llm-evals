@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 
 import {
   BatchesIcon,
+  EvalsIcon,
   HistoryIcon,
   LogoGlyph,
   LogoutIcon,
@@ -52,6 +53,7 @@ const workspaceNavItems: Array<{
   page: Exclude<WorkspacePage, "settings">;
 }> = [
   { label: "Playground", icon: PlaygroundIcon, page: "playground" },
+  { label: "Evals", icon: EvalsIcon, page: "evals" },
   { label: "Batches", icon: BatchesIcon, page: "batches" },
   { label: "History", icon: HistoryIcon, page: "history" },
 ];
@@ -118,7 +120,7 @@ export default function WorkspaceLayout({
                   Eval AI
                 </p>
                 <p className="truncate text-xs text-sidebar-foreground/60">
-                  Fundraiser evals
+                  LLM eval builder
                 </p>
               </div>
             </div>

@@ -7,9 +7,13 @@ import { randomizeCauseTags } from "@/lib/source-pool";
 import { applyThemePreference, writeBrowserModelSettings, writeStoredTheme } from "@/lib/workspace-browser";
 import {
   batchRunRequest,
+  deleteDatasetRequest,
+  deleteEvalRequest,
   deletePromptTemplateRequest,
   deleteTestCaseRequest,
   generateRunRequest,
+  saveDatasetRequest,
+  saveEvalRequest,
   importSourcePoolChunkRequest,
   randomSourcePoolRowRequest,
   sampleSourcePoolRequest,
@@ -19,6 +23,8 @@ import {
   saveWorkspaceSettingsRequest,
 } from "@/lib/workspace-api";
 import type { SaveRatingRequest } from "@/lib/types/api";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+import type { EvalRunInput } from "@/lib/types/workspace";
 import type {
   GenerationSettings,
   PromptTemplate,
@@ -57,7 +63,9 @@ interface CreateWorkspaceActionsArgs {
   setActivePage: Dispatch<SetStateAction<WorkspacePage>>;
   setBatchGenerating: Dispatch<SetStateAction<boolean>>;
   setCaseDraft: Dispatch<SetStateAction<TestCase>>;
+  setDatasets: Dispatch<SetStateAction<Dataset[]>>;
   setErrorMessage: Dispatch<SetStateAction<string>>;
+  setEvals: Dispatch<SetStateAction<EvalDefinition[]>>;
   setImportedCases: Dispatch<SetStateAction<TestCase[]>>;
   setPlaygroundGenerating: Dispatch<SetStateAction<boolean>>;
   setPlaygroundRandomizing: Dispatch<SetStateAction<boolean>>;
@@ -92,7 +100,9 @@ export function createWorkspaceActions({
   setActivePage,
   setBatchGenerating,
   setCaseDraft,
+  setDatasets,
   setErrorMessage,
+  setEvals,
   setImportedCases,
   setPlaygroundGenerating,
   setPlaygroundRandomizing,
@@ -118,6 +128,12 @@ export function createWorkspaceActions({
   | "handleSaveImportedCases"
   | "handleSavePrompt"
   | "handleGenerate"
+  | "handleEvalGenerate"
+  | "handleEvalBatchRun"
+  | "handleSaveEval"
+  | "handleDeleteEval"
+  | "handleSaveDataset"
+  | "handleDeleteDataset"
   | "handleBatchRun"
   | "handleImportSourcePool"
   | "handleRandomizeCaseFromSourcePool"
@@ -219,6 +235,114 @@ export function createWorkspaceActions({
       setErrorMessage(ensureErrorMessage(error, "Failed to generate run."));
     } finally {
       setPlaygroundGenerating(false);
+    }
+  }
+
+  async function handleEvalGenerate(input: EvalRunInput) {
+    if (playgroundGenerating) {
+      return;
+    }
+    clearMessages();
+    setPlaygroundGenerating(true);
+    try {
+      const payload = await generateRunRequest({
+        mode: input.mode || playgroundMode,
+        label: input.label,
+        evalId: input.evalId || null,
+        evalDraft: input.evalDraft,
+        templateId: input.templateId,
+        manualValues: input.manualValues || {},
+        generationSettings,
+        settings,
+        variants,
+      });
+      setPlaygroundRun(payload.run);
+      setRuns((current) => updateRunCollection(payload.run, current));
+      setSelectedRunId(payload.run.id);
+      startTransition(() => setActivePage("history"));
+    } catch (error) {
+      setPlaygroundRun(null);
+      setErrorMessage(ensureErrorMessage(error, "Failed to generate run."));
+    } finally {
+      setPlaygroundGenerating(false);
+    }
+  }
+
+  async function handleEvalBatchRun(input: EvalRunInput) {
+    clearMessages();
+    setBatchGenerating(true);
+    try {
+      if (!input.csvRows?.length) {
+        throw new Error("Import a CSV with at least one row to run a batch.");
+      }
+      const payload = await batchRunRequest({
+        label: input.label,
+        evalId: input.evalId || null,
+        evalDraft: input.evalDraft,
+        templateId: input.templateId,
+        manualValues: input.manualValues || {},
+        csvRows: input.csvRows,
+        columnMapping: input.columnMapping || null,
+        generationSettings,
+        settings,
+        variants,
+      });
+      setRuns((current) => updateRunCollection(payload.run, current));
+      setSelectedRunId(payload.run.id);
+      startTransition(() => setActivePage("history"));
+      setStatusMessage("Batch run completed.");
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to run batch."));
+    } finally {
+      setBatchGenerating(false);
+    }
+  }
+
+  async function handleSaveEval(entry: Partial<EvalDefinition>): Promise<EvalDefinition | null> {
+    clearMessages();
+    try {
+      const payload = await saveEvalRequest(entry);
+      setEvals(payload.evals || []);
+      setStatusMessage(`Saved eval "${payload.saved?.name || entry.name || ""}".`);
+      return payload.saved || null;
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to save eval."));
+      return null;
+    }
+  }
+
+  async function handleDeleteEval(id: string) {
+    clearMessages();
+    try {
+      const payload = await deleteEvalRequest(id);
+      setEvals(payload.evals || []);
+      setStatusMessage("Deleted eval.");
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete eval."));
+    }
+  }
+
+  async function handleSaveDataset(entry: Partial<Dataset>): Promise<Dataset | null> {
+    clearMessages();
+    try {
+      const payload = await saveDatasetRequest(entry);
+      setDatasets(payload.datasets || []);
+      setStatusMessage(`Saved dataset "${payload.saved?.name || entry.name || ""}".`);
+      return payload.saved || null;
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to save dataset."));
+      return null;
+    }
+  }
+
+  async function handleDeleteDataset(id: string) {
+    clearMessages();
+    try {
+      const payload = await deleteDatasetRequest(id);
+      setDatasets(payload.datasets || []);
+      setStatusMessage("Deleted dataset.");
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete dataset."));
     }
   }
 
@@ -445,6 +569,12 @@ export function createWorkspaceActions({
     handleSaveImportedCases,
     handleSavePrompt,
     handleGenerate,
+    handleEvalGenerate,
+    handleEvalBatchRun,
+    handleSaveEval,
+    handleDeleteEval,
+    handleSaveDataset,
+    handleDeleteDataset,
     handleBatchRun,
     handleImportSourcePool,
     handleRandomizeCaseFromSourcePool,

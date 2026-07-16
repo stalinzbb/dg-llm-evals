@@ -1,5 +1,6 @@
 import type {
   BatchSectionProps,
+  EvalsSectionProps,
   HistorySectionProps,
   PlaygroundSectionProps,
   SettingsSectionProps,
@@ -30,33 +31,21 @@ export function getWorkspaceStatusViewModel(workspace: WorkspaceState): Workspac
 
 export function getPlaygroundSectionProps(workspace: WorkspaceState): PlaygroundSectionProps {
   return {
+    activeEvalId: workspace.activeEvalId,
     availableModelOptions: workspace.availableModelOptions,
-    canSaveCase: workspace.canSaveCase,
-    canSavePrompt: workspace.canSavePrompt,
-    caseDraft: workspace.caseDraft,
-    causeTagOptions: workspace.causeTagOptions,
+    datasets: workspace.datasets,
     enabledModelIds: workspace.enabledModelIds,
+    evals: workspace.evals,
     generationSettings: workspace.generationSettings,
-    handleDeleteCase: workspace.handleDeleteCase,
-    handleDeletePrompt: workspace.handleDeletePrompt,
-    handleGenerate: workspace.handleGenerate,
-    handleRandomizeCaseFromSourcePool: workspace.handleRandomizeCaseFromSourcePool,
-    handleRandomizeCauseTags: workspace.handleRandomizeCauseTags,
-    handleSaveCase: workspace.handleSaveCase,
-    handleSavePrompt: workspace.handleSavePrompt,
-    normalizeTestCase: workspace.normalizeTestCase,
+    handleEvalGenerate: workspace.handleEvalGenerate,
+    handleSaveEval: workspace.handleSaveEval,
     playgroundGenerating: workspace.playgroundGenerating,
     playgroundMode: workspace.playgroundMode,
-    playgroundRandomizing: workspace.playgroundRandomizing,
     playgroundRun: workspace.playgroundRun,
-    promptDraft: workspace.promptDraft,
-    promptTemplates: workspace.promptTemplates,
-    setCaseDraft: workspace.setCaseDraft,
+    setActiveEvalId: workspace.setActiveEvalId,
+    setActivePage: workspace.setActivePage,
     setGenerationSettings: workspace.setGenerationSettings,
-    setPromptDraft: workspace.setPromptDraft,
     setVariants: workspace.setVariants,
-    sourcePoolStats: workspace.sourcePoolStats,
-    testCases: workspace.testCases,
     updateVariant: workspace.updateVariant,
     variants: workspace.variants,
   };
@@ -64,26 +53,30 @@ export function getPlaygroundSectionProps(workspace: WorkspaceState): Playground
 
 export function getBatchSectionProps(workspace: WorkspaceState): BatchSectionProps {
   return {
+    activeEvalId: workspace.activeEvalId,
     availableModelOptions: workspace.availableModelOptions,
     batchGenerating: workspace.batchGenerating,
-    batchSampleCount: workspace.batchSampleCount,
-    batchSelection: workspace.batchSelection,
-    batchVerificationFilter: workspace.batchVerificationFilter,
+    datasets: workspace.datasets,
     enabledModelIds: workspace.enabledModelIds,
-    handleBatchRun: workspace.handleBatchRun,
-    handleSaveImportedCases: workspace.handleSaveImportedCases,
-    importedCases: workspace.importedCases,
-    promptTemplates: workspace.promptTemplates,
-    setBatchSampleCount: workspace.setBatchSampleCount,
-    setBatchSelection: workspace.setBatchSelection,
-    setBatchVerificationFilter: workspace.setBatchVerificationFilter,
-    setImportedCases: workspace.setImportedCases,
+    evals: workspace.evals,
+    handleEvalBatchRun: workspace.handleEvalBatchRun,
+    setActiveEvalId: workspace.setActiveEvalId,
     setVariants: workspace.setVariants,
-    shapeImportedCase: workspace.shapeImportedCase,
-    sourcePoolStats: workspace.sourcePoolStats,
-    testCases: workspace.testCases,
     updateVariant: workspace.updateVariant,
     variants: workspace.variants,
+  };
+}
+
+export function getEvalsSectionProps(workspace: WorkspaceState): EvalsSectionProps {
+  return {
+    datasets: workspace.datasets,
+    evals: workspace.evals,
+    handleDeleteDataset: workspace.handleDeleteDataset,
+    handleDeleteEval: workspace.handleDeleteEval,
+    handleSaveDataset: workspace.handleSaveDataset,
+    handleSaveEval: workspace.handleSaveEval,
+    setActiveEvalId: workspace.setActiveEvalId,
+    setActivePage: workspace.setActivePage,
   };
 }
 

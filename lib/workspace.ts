@@ -50,6 +50,7 @@ import type {
   WorkspacePage,
   WorkspaceSettings,
 } from "@/lib/types/domain";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
 import type { WorkspaceSnapshot, WorkspaceState } from "@/lib/types/workspace";
 
 type StorageMode = "local" | "supabase";
@@ -170,6 +171,9 @@ export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): Wo
   const [activePage, setActivePage] = useState<WorkspacePage>(defaultPage);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+  const [evals, setEvals] = useState<EvalDefinition[]>([]);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [activeEvalId, setActiveEvalId] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
   const [storageMode, setStorageMode] = useState<StorageMode>("local");
   const [platformStatus, setPlatformStatus] = useState({
@@ -270,6 +274,9 @@ export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): Wo
         skipNextWorkspaceSaveRef.current = true;
         setTestCases(payload.testCases || []);
         setPromptTemplates(payload.promptTemplates || []);
+        setEvals(payload.evals || []);
+        setDatasets(payload.datasets || []);
+        setActiveEvalId((current) => current || payload.evals?.[0]?.id || "");
         setRuns(payload.runs || []);
         setStorageMode(nextStorageMode);
         setAppSettingsStorageMode(nextAppSettingsStorageMode);
@@ -422,6 +429,12 @@ export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): Wo
     handleSaveImportedCases,
     handleSavePrompt,
     handleGenerate,
+    handleEvalGenerate,
+    handleEvalBatchRun,
+    handleSaveEval,
+    handleDeleteEval,
+    handleSaveDataset,
+    handleDeleteDataset,
     handleBatchRun,
     handleImportSourcePool,
     handleRandomizeCaseFromSourcePool,
@@ -446,7 +459,9 @@ export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): Wo
     setActivePage,
     setBatchGenerating,
     setCaseDraft,
+    setDatasets,
     setErrorMessage,
+    setEvals,
     setImportedCases,
     setPlaygroundGenerating,
     setPlaygroundRandomizing,
@@ -468,6 +483,16 @@ export function useWorkspaceState(defaultPage: WorkspacePage = "playground"): Wo
 
   return {
     activePage,
+    activeEvalId,
+    setActiveEvalId,
+    evals,
+    datasets,
+    handleEvalGenerate,
+    handleEvalBatchRun,
+    handleSaveEval,
+    handleDeleteEval,
+    handleSaveDataset,
+    handleDeleteDataset,
     batchSelection,
     batchSampleCount,
     batchVerificationFilter,

@@ -1,9 +1,9 @@
+import { useMemo, useState } from "react";
+
+import { BatchRunBoltIcon } from "@/components/icons";
 import WorkspacePageHeader from "@/components/workspace-page-header";
-import { BatchRunBoltIcon, BadgeCheckIcon, BoltIcon } from "@/components/icons";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,56 +23,118 @@ import {
 } from "@/components/ui/table";
 import { parseCsv, toCsv } from "@/lib/csv";
 import type { BatchSectionProps } from "@/lib/types/workspace";
-import { createInitialVariant, downloadCsv, formatModelOption } from "@/lib/workspace";
-import { getSourcePoolSummary } from "@/lib/workspace-selectors";
+import { downloadCsv, formatModelOption } from "@/lib/workspace";
 
-import {
-  EmptyState,
-  Field,
-  HelpTooltip,
-  SectionCard,
-  SectionHead,
-  SubSection,
-} from "./section-primitives";
+import { EmptyState, Field, SectionCard, SectionHead, SubSection } from "./section-primitives";
+
+const SKIP_COLUMN = "__skip__";
+const PREVIEW_ROW_LIMIT = 5;
 
 export function BatchSection({
+  activeEvalId,
   availableModelOptions,
   batchGenerating,
-  batchSampleCount,
-  batchSelection,
-  batchVerificationFilter,
-  enabledModelIds,
-  handleBatchRun,
-  handleSaveImportedCases,
-  importedCases,
-  promptTemplates,
-  setBatchSampleCount,
-  setBatchSelection,
-  setBatchVerificationFilter,
-  setImportedCases,
-  setVariants,
-  shapeImportedCase,
-  sourcePoolStats,
-  testCases,
+  datasets,
+  evals,
+  handleEvalBatchRun,
+  setActiveEvalId,
   updateVariant,
   variants,
 }: BatchSectionProps) {
-  const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
+  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [label, setLabel] = useState("");
+
+  const activeEval = useMemo(
+    () => evals.find((item) => item.id === activeEvalId) || evals[0] || null,
+    [evals, activeEvalId],
+  );
+  const datasetsById = useMemo(() => new Map(datasets.map((dataset) => [dataset.id, dataset])), [datasets]);
+  const headers = csvRows.length ? Object.keys(csvRows[0]) : [];
+
+  // Manual values reset when the active eval changes (derived-state-reset pattern).
+  const [manualState, setManualState] = useState<{
+    evalId: string | null;
+    values: Record<string, string>;
+  }>({ evalId: null, values: {} });
+  if ((activeEval?.id || null) !== manualState.evalId) {
+    setManualState({ evalId: activeEval?.id || null, values: {} });
+  }
+  const manualValues = manualState.values;
+  const setManualValue = (key: string, value: string) =>
+    setManualState((current) => ({ ...current, values: { ...current.values, [key]: value } }));
+
+  function autoMapColumns(rows: Record<string, string>[]) {
+    if (!rows.length || !activeEval) return {};
+    const mapping: Record<string, string> = {};
+    const variableKeys = activeEval.variables.map((variable) => variable.key);
+    for (const header of Object.keys(rows[0])) {
+      const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const match = variableKeys.find(
+        (key) => key.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedHeader,
+      );
+      mapping[header] = match || SKIP_COLUMN;
+    }
+    return mapping;
+  }
+
+  function handleCsvFile(file: File) {
+    void file.text().then((text) => {
+      const rows = parseCsv(text);
+      setCsvRows(rows);
+      setCsvFileName(file.name);
+      setColumnMapping(autoMapColumns(rows));
+    });
+  }
+
+  const mappedVariableKeys = new Set(
+    Object.values(columnMapping).filter((value) => value !== SKIP_COLUMN),
+  );
+
+  const unmappedVariables = (activeEval?.variables || []).filter(
+    (variable) => !mappedVariableKeys.has(variable.key),
+  );
+
+  const runnable = Boolean(activeEval && csvRows.length && !batchGenerating);
+
+  function runBatch() {
+    if (!activeEval) return;
+    void handleEvalBatchRun({
+      evalId: activeEval.id,
+      templateId: activeEval.templates[0]?.id,
+      manualValues,
+      csvRows,
+      columnMapping: Object.fromEntries(
+        Object.entries(columnMapping).filter(([, value]) => value !== SKIP_COLUMN),
+      ),
+      label: label || `${activeEval.name} · batch of ${csvRows.length}`,
+    });
+  }
+
+  function downloadTemplateCsv() {
+    if (!activeEval) return;
+    const sample = Object.fromEntries(
+      activeEval.variables.map((variable) => [variable.key, variable.defaultValue || ""]),
+    );
+    downloadCsv(`${activeEval.name.replace(/\s+/g, "-").toLowerCase()}-batch-template.csv`, toCsv([sample]));
+  }
+
+  if (!activeEval) {
+    return (
+      <>
+        <WorkspacePageHeader description="Run an eval over many CSV rows at once." title="Batches" />
+        <SectionCard>
+          <EmptyState>No evals available. Create one in the Eval Builder first.</EmptyState>
+        </SectionCard>
+      </>
+    );
+  }
 
   return (
     <>
       <WorkspacePageHeader
-        actions={
-          <Button
-            disabled={batchGenerating || !promptTemplates.length}
-            onClick={() => void handleBatchRun()}
-            type="button"
-          >
-            <BatchRunBoltIcon />
-            {batchGenerating ? "Running…" : "Run Batch"}
-          </Button>
-        }
-        description="Run the same prompt stack across multiple saved or imported cases."
+        description="Upload a CSV where each row is one run. Columns map to the eval's variables; every row runs through each model variant."
         title="Batches"
       />
 
@@ -80,316 +142,178 @@ export function BatchSection({
         <SectionCard>
           <SectionHead
             action={
-              <Button
-                disabled={batchGenerating || !promptTemplates.length || !batchSelection.length}
-                onClick={() =>
-                  void handleBatchRun({
-                    includeSavedCases: true,
-                    includeImportedCases: false,
-                    includeSourcePool: false,
-                  })
-                }
-                size="sm"
-                type="button"
-              >
-                <BoltIcon />
-                {batchGenerating ? "Running…" : "Run"}
+              <Button onClick={downloadTemplateCsv} size="sm" type="button" variant="ghost">
+                Download CSV template
               </Button>
             }
-            title="Playground saved cases"
+            subtitle="Pick the eval, then upload data."
+            title="Eval & Data"
           />
-          {testCases.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Use</TableHead>
-                  <TableHead>Team Name</TableHead>
-                  <TableHead>Org Name</TableHead>
-                  <TableHead>Verified</TableHead>
-                  <TableHead>Affiliation</TableHead>
-                  <TableHead>Causes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {testCases.map((testCase) => (
-                  <TableRow key={testCase.id ?? `${testCase.organizationName}-${testCase.teamName}`}>
-                    <TableCell>
-                      <Checkbox
-                        checked={Boolean(testCase.id && batchSelection.includes(testCase.id))}
-                        onCheckedChange={(checked) =>
-                          setBatchSelection(
-                            !testCase.id
-                              ? batchSelection
-                              : checked
-                                ? [...batchSelection, testCase.id]
-                                : batchSelection.filter((id) => id !== testCase.id),
-                          )
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>{testCase.teamName}</TableCell>
-                    <TableCell>{testCase.organizationName}</TableCell>
-                    <TableCell>{testCase.isVerified ? <BadgeCheckIcon /> : null}</TableCell>
-                    <TableCell>{testCase.teamAffiliation}</TableCell>
-                    <TableCell>{testCase.causeTags.join(", ")}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <EmptyState>No saved cases yet.</EmptyState>
-          )}
-        </SectionCard>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <SectionCard>
-            <SectionHead
-              action={
-                <Button
-                  disabled={batchGenerating || !promptTemplates.length || !importedCases.length}
-                  onClick={() =>
-                    void handleBatchRun({
-                      includeSavedCases: false,
-                      includeImportedCases: true,
-                      includeSourcePool: false,
-                    })
-                  }
-                  size="sm"
-                  type="button"
-                >
-                  <BoltIcon />
-                  {batchGenerating ? "Running…" : "Run"}
-                </Button>
-              }
-              title="CSV import"
-            />
-            <p className="text-xs text-muted-foreground">
-              Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID,
-              ORGANIZATION_TYPE, TEAM_ACTIVITY, TEAM_AFFILIATION.
-            </p>
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="csv-import">Upload CSV</Label>
+              <Label htmlFor="batch-eval">Eval</Label>
+              <Select onValueChange={(value) => setActiveEvalId(value)} value={activeEval.id || ""}>
+                <SelectTrigger className="w-full" id="batch-eval">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {evals.map((item) => (
+                    <SelectItem key={item.id} value={item.id || ""}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="batch-csv">CSV file</Label>
               <Input
                 accept=".csv,text/csv"
-                id="csv-import"
+                id="batch-csv"
                 onChange={(event) => {
                   const file = event.target.files?.[0];
-                  if (!file) {
-                    return;
-                  }
-
-                  void file.text().then((text) => {
-                    const parsed = parseCsv(text).map(shapeImportedCase);
-                    setImportedCases(parsed);
-                  });
+                  if (file) handleCsvFile(file);
                   event.target.value = "";
                 }}
                 type="file"
               />
+              {csvFileName ? (
+                <p className="text-xs text-muted-foreground">
+                  {csvFileName} · {csvRows.length} rows
+                </p>
+              ) : null}
             </div>
-            {importedCases.length ? (
-              <>
-                <Alert>
-                  <AlertDescription>{importedCases.length} imported cases are staged.</AlertDescription>
-                </Alert>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => void handleSaveImportedCases()}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Save imported cases
-                  </Button>
-                  <Button
-                    onClick={() => downloadCsv("imported-cases.csv", toCsv(importedCases))}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    Export staged rows
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <EmptyState>Import a CSV to stage additional batch cases.</EmptyState>
-            )}
-          </SectionCard>
+          </div>
 
-          <SectionCard>
-            <SectionHead
-              action={
-                <Button
-                  disabled={
-                    batchGenerating ||
-                    !promptTemplates.length ||
-                    (Number(batchSampleCount) || 0) <= 0
-                  }
-                  onClick={() =>
-                    void handleBatchRun({
-                      includeSavedCases: false,
-                      includeImportedCases: false,
-                      includeSourcePool: true,
-                    })
-                  }
-                  size="sm"
-                  type="button"
-                >
-                  <BoltIcon />
-                  {batchGenerating ? "Running…" : "Run"}
-                </Button>
-              }
-              subtitle={sourcePoolSummary}
-              title="Source Pool"
-            />
-
-            <SubSection title="Batch Sampling">
-              <div className="grid grid-cols-2 gap-3">
-                <Field
-                  label="Random sample count"
-                  onChange={setBatchSampleCount}
-                  type="number"
-                  value={batchSampleCount}
-                />
-                <div className="grid gap-1.5">
-                  <Label htmlFor="batch-verification-filter">Verification Filter</Label>
-                  <Select
-                    onValueChange={setBatchVerificationFilter}
-                    value={batchVerificationFilter}
-                  >
-                    <SelectTrigger className="w-full" id="batch-verification-filter">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="verified">Verified only</SelectItem>
-                      <SelectItem value="unverified">Unverified only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          {headers.length ? (
+            <SubSection title="Column mapping">
+              <div className="grid gap-2 md:grid-cols-2">
+                {headers.map((header) => (
+                  <div className="grid grid-cols-[1fr_1fr] items-center gap-2" key={header}>
+                    <span className="truncate font-mono text-xs">{header}</span>
+                    <Select
+                      onValueChange={(value) =>
+                        setColumnMapping((current) => ({ ...current, [header]: value }))
+                      }
+                      value={columnMapping[header] || SKIP_COLUMN}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={SKIP_COLUMN}>Ignore column</SelectItem>
+                        {activeEval.variables.map((variable) => (
+                          <SelectItem key={variable.key} value={variable.key}>
+                            {`{{${variable.key}}}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Source-pool batch rows get 1-3 random cause tags automatically and are used only
-                for that run.
-              </p>
             </SubSection>
-          </SectionCard>
-        </div>
-
-        <SectionCard>
-          <SectionHead
-            action={
-              <Button
-                disabled={!promptTemplates.length}
-                onClick={() =>
-                  setVariants((current) => [
-                    ...current,
-                    {
-                      ...createInitialVariant(enabledModelIds),
-                      label: `Variant ${current.length + 1}`,
-                      promptSource: promptTemplates[0]?.id || "current",
-                    },
-                  ])
-                }
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Add variant
-              </Button>
-            }
-            subtitle="Choose the saved prompt and model for each batch variant. Prompts must be saved in Playground first."
-            title="Batch run configuration"
-          />
-
-          {!promptTemplates.length ? (
-            <Alert variant="destructive">
-              <AlertDescription>
-                Save at least one prompt in Playground before running a batch.
-              </AlertDescription>
-            </Alert>
           ) : null}
 
-          <div className="grid gap-4">
-            {variants.map((variant, index) => (
-              <Card className="gap-0" key={variant.id}>
-                <CardContent className="grid gap-4 p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {variant.label}
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3">
+          {unmappedVariables.length ? (
+            <SubSection title="Variables not covered by the CSV">
+              <div className="grid gap-3 md:grid-cols-2">
+                {unmappedVariables.map((variable) => {
+                  const dataset = variable.datasetId ? datasetsById.get(variable.datasetId) : null;
+                  const isRandom = variable.defaultSource === "random";
+                  return (
                     <Field
-                      label="Label"
-                      onChange={(value) => updateVariant(variant.id, { label: value })}
-                      value={variant.label}
+                      key={variable.key}
+                      label={`${variable.label || variable.key}${variable.required ? " *" : ""}`}
+                      onChange={(value) => setManualValue(variable.key, value)}
+                      placeholder={
+                        isRandom
+                          ? `Blank = random per row from “${dataset?.name || "dataset"}”`
+                          : variable.defaultValue
+                            ? `Default: ${variable.defaultValue}`
+                            : "Applied to every row"
+                      }
+                      value={manualValues[variable.key] ?? ""}
                     />
-                    <div className="grid gap-1.5">
-                      <Label htmlFor={`${variant.id}-batch-prompt-source`}>Saved Prompt</Label>
-                      <Select
-                        onValueChange={(value) => updateVariant(variant.id, { promptSource: value })}
-                        value={variant.promptSource}
-                      >
-                        <SelectTrigger className="w-full" id={`${variant.id}-batch-prompt-source`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {promptTemplates.map((template) => (
-                            <SelectItem
-                              key={template.id ?? template.name}
-                              value={template.id ?? "current"}
-                            >
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label
-                        className="flex items-center gap-1.5"
-                        htmlFor={`${variant.id}-batch-model`}
-                      >
-                        <span>Model</span>
-                        <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
-                      </Label>
-                      <Select
-                        onValueChange={(value) => updateVariant(variant.id, { model: value })}
-                        value={variant.model}
-                      >
-                        <SelectTrigger className="w-full" id={`${variant.id}-batch-model`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableModelOptions.map((model) => (
-                            <SelectItem
-                              disabled={model.unavailable}
-                              key={model.value}
-                              value={model.value}
-                            >
-                              {formatModelOption(model)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  {index > 0 ? (
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() =>
-                          setVariants((current) => current.filter((item) => item.id !== variant.id))
-                        }
-                        size="sm"
-                        type="button"
-                        variant="destructive"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+                  );
+                })}
+              </div>
+            </SubSection>
+          ) : null}
+
+          {csvRows.length ? (
+            <SubSection title={`Preview (first ${Math.min(PREVIEW_ROW_LIMIT, csvRows.length)} rows)`}>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHead key={header}>
+                          <span className="font-mono text-xs">{header}</span>
+                          {columnMapping[header] && columnMapping[header] !== SKIP_COLUMN ? (
+                            <Badge className="ml-1 font-mono text-[0.6rem]" variant="secondary">
+                              {`{{${columnMapping[header]}}}`}
+                            </Badge>
+                          ) : null}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {csvRows.slice(0, PREVIEW_ROW_LIMIT).map((row, index) => (
+                      <TableRow key={index}>
+                        {headers.map((header) => (
+                          <TableCell className="max-w-[220px] truncate text-xs" key={header}>
+                            {row[header]}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </SubSection>
+          ) : (
+            <EmptyState>Upload a CSV to preview rows here.</EmptyState>
+          )}
+        </SectionCard>
+
+        <SectionCard>
+          <SectionHead subtitle="Each CSV row runs once per variant below." title="Models & Run" />
+          <div className="grid gap-3 md:grid-cols-2">
+            {variants.map((variant) => (
+              <div className="grid gap-1.5" key={variant.id}>
+                <Label htmlFor={`batch-${variant.id}-model`}>{variant.label}</Label>
+                <Select
+                  onValueChange={(value) => updateVariant(variant.id, { model: value })}
+                  value={variant.model}
+                >
+                  <SelectTrigger className="w-full" id={`batch-${variant.id}-model`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModelOptions.map((model) => (
+                      <SelectItem disabled={model.unavailable} key={model.value} value={model.value}>
+                        {formatModelOption(model)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             ))}
+          </div>
+
+          <div className="grid gap-3 border-t pt-4 md:grid-cols-[1fr_auto]">
+            <Field label="Run label (optional)" onChange={setLabel} value={label} />
+            <div className="flex items-end">
+              <Button disabled={!runnable} onClick={runBatch} type="button">
+                <BatchRunBoltIcon />
+                {batchGenerating
+                  ? "Running batch…"
+                  : `Run ${csvRows.length || 0} × ${variants.length} generations`}
+              </Button>
+            </div>
           </div>
         </SectionCard>
       </div>

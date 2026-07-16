@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import DrawerShell from "@/components/drawer-shell";
-import { BadgeCheckIcon, BoltIcon, ShuffleIcon } from "@/components/icons";
-import LibraryDrawer from "@/components/library-drawer";
+import { BoltIcon, ShuffleIcon } from "@/components/icons";
 import ResultCard from "@/components/result-card";
 import WorkspacePageHeader from "@/components/workspace-page-header";
 import { Button } from "@/components/ui/button";
@@ -17,86 +16,99 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DEFAULT_GENERATION_SETTINGS } from "@/lib/constants";
-import { toCsv } from "@/lib/csv";
-import {
-  getOrganizationTypeOptions,
-  getTeamActivityConfig,
-  getTeamAffiliationConfig,
-  normalizeTaxonomySelection,
-} from "@/lib/taxonomy";
+import { normalizeEvalDefinition } from "@/lib/eval";
+import { validateTemplate } from "@/lib/template";
+import type { EvalDefinition } from "@/lib/types/eval";
 import type { PlaygroundSectionProps } from "@/lib/types/workspace";
-import { createInitialVariant, downloadCsv, formatModelOption } from "@/lib/workspace";
+import { createInitialVariant, formatModelOption } from "@/lib/workspace";
 
-import {
-  EmptyState,
-  Field,
-  HelpTooltip,
-  SectionCard,
-  SectionHead,
-  SubSection,
-  TextAreaField,
-} from "./section-primitives";
-import {
-  clampDecimalInput,
-  clampIntegerInput,
-  getAffiliationSelectValue,
-  HELP_TEXT,
-} from "./section-helpers";
+import { EmptyState, Field, HelpTooltip, SectionCard, SectionHead, SubSection, TextAreaField } from "./section-primitives";
+import { clampDecimalInput, clampIntegerInput, HELP_TEXT } from "./section-helpers";
 
 export function PlaygroundSection({
+  activeEvalId,
   availableModelOptions,
-  canSaveCase,
-  canSavePrompt,
-  caseDraft,
-  causeTagOptions,
+  datasets,
   enabledModelIds,
+  evals,
   generationSettings,
-  handleDeleteCase,
-  handleDeletePrompt,
-  handleGenerate,
-  handleRandomizeCaseFromSourcePool,
-  handleRandomizeCauseTags,
-  handleSaveCase,
-  handleSavePrompt,
-  normalizeTestCase,
+  handleEvalGenerate,
+  handleSaveEval,
   playgroundGenerating,
   playgroundMode,
-  playgroundRandomizing,
   playgroundRun,
-  promptDraft,
-  promptTemplates,
-  setCaseDraft,
+  setActiveEvalId,
+  setActivePage,
   setGenerationSettings,
-  setPromptDraft,
   setVariants,
-  sourcePoolStats,
-  testCases,
   updateVariant,
   variants,
 }: PlaygroundSectionProps) {
-  const [causeTagError, setCauseTagError] = useState("");
   const [dismissedResultKey, setDismissedResultKey] = useState("");
-  const [isCaseLibraryOpen, setIsCaseLibraryOpen] = useState(false);
-  const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
   const [isSharedModelParamsEnabled, setIsSharedModelParamsEnabled] = useState(false);
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
 
-  const organizationTypeOptions = getOrganizationTypeOptions();
-  const teamActivityConfig = getTeamActivityConfig(caseDraft.organizationType);
-  const teamAffiliationConfig = getTeamAffiliationConfig(
-    caseDraft.organizationType,
-    caseDraft.teamActivity,
+  const activeEval = useMemo(
+    () => evals.find((item) => item.id === activeEvalId) || evals[0] || null,
+    [evals, activeEvalId],
   );
-  const affiliationSelectValue = getAffiliationSelectValue(
-    caseDraft.teamAffiliation,
-    teamAffiliationConfig,
-  );
+
+  // Draft state resets when the active eval changes (derived-state-reset pattern).
+  const [draftState, setDraftState] = useState<{
+    evalId: string | null;
+    evalDraft: EvalDefinition | null;
+    templateId: string;
+    manualValues: Record<string, string>;
+  }>({ evalId: null, evalDraft: null, templateId: "", manualValues: {} });
+
+  if ((activeEval?.id || null) !== draftState.evalId) {
+    setDraftState({
+      evalId: activeEval?.id || null,
+      evalDraft: activeEval ? normalizeEvalDefinition(activeEval) : null,
+      templateId: activeEval?.templates[0]?.id || "",
+      manualValues: {},
+    });
+  }
+
+  const { evalDraft, templateId, manualValues } = draftState;
+  const setEvalDraft = (updater: (current: EvalDefinition | null) => EvalDefinition | null) =>
+    setDraftState((current) => ({ ...current, evalDraft: updater(current.evalDraft) }));
+  const setTemplateId = (value: string) =>
+    setDraftState((current) => ({ ...current, templateId: value }));
+  const setManualValue = (key: string, value: string) =>
+    setDraftState((current) => ({
+      ...current,
+      manualValues: { ...current.manualValues, [key]: value },
+    }));
+  const clearManualValues = () =>
+    setDraftState((current) => ({ ...current, manualValues: {} }));
+
+  const workingEval = evalDraft;
+  const template =
+    workingEval?.templates.find((item) => item.id === templateId) || workingEval?.templates[0] || null;
+
+  const validation = useMemo(() => {
+    if (!workingEval || !template) return null;
+    return validateTemplate(template.userPromptTemplate, workingEval.variables);
+  }, [workingEval, template]);
+
+  const datasetsById = useMemo(() => new Map(datasets.map((dataset) => [dataset.id, dataset])), [datasets]);
+
   const latestResultKey = playgroundGenerating ? "__pending__" : playgroundRun?.id || "";
   const isResultDrawerOpen = Boolean(latestResultKey) && latestResultKey !== dismissedResultKey;
 
-  function parseSharedDecimalInput(
-    value: string,
-    options: { fallback: number; max: number; min: number },
-  ) {
+  const missingRequired = (workingEval?.variables || []).filter((variable) => {
+    if (!variable.required) return false;
+    const manual = manualValues[variable.key]?.trim();
+    if (manual) return false;
+    if (variable.defaultSource === "random") {
+      const dataset = variable.datasetId ? datasetsById.get(variable.datasetId) : null;
+      return !dataset?.values.length;
+    }
+    return !variable.defaultValue;
+  });
+
+  function parseSharedDecimalInput(value: string, options: { fallback: number; max: number; min: number }) {
     const nextValue = clampDecimalInput(value, { min: options.min, max: options.max });
     return nextValue === "" ? options.fallback : Number(nextValue);
   }
@@ -116,30 +128,6 @@ export function PlaygroundSection({
     return nextValue === "" || nextValue === "-" ? "" : Number(nextValue);
   }
 
-  function handleCauseTagToggle(tag: string) {
-    const exists = caseDraft.causeTags.includes(tag);
-
-    if (exists) {
-      setCaseDraft((current) => ({
-        ...current,
-        causeTags: current.causeTags.filter((item) => item !== tag),
-      }));
-      setCauseTagError("");
-      return;
-    }
-
-    if (caseDraft.causeTags.length >= 3) {
-      setCauseTagError("Select up to 3 cause tags.");
-      return;
-    }
-
-    setCaseDraft((current) => ({
-      ...current,
-      causeTags: [...current.causeTags, tag],
-    }));
-    setCauseTagError("");
-  }
-
   function handleSharedModelParamsToggle(enabled: boolean) {
     setIsSharedModelParamsEnabled(enabled);
     if (!enabled) {
@@ -150,21 +138,59 @@ export function PlaygroundSection({
   function handleVariantOverrideToggle(variantId: string, enabled: boolean) {
     updateVariant(variantId, {
       useOverrides: enabled,
-      ...(enabled
-        ? {}
-        : {
-            maxTokens: "",
-            seed: "",
-            temperature: "",
-            topP: "",
-          }),
+      ...(enabled ? {} : { maxTokens: "", seed: "", temperature: "", topP: "" }),
     });
+  }
+
+  function patchTemplateDraft(patch: Partial<NonNullable<typeof template>>) {
+    if (!template) return;
+    setEvalDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        templates: current.templates.map((item) =>
+          item.id === template.id ? { ...item, ...patch } : item,
+        ),
+      };
+    });
+  }
+
+  function runEval() {
+    if (!workingEval) return;
+    setDismissedResultKey("");
+    void handleEvalGenerate({
+      mode: playgroundMode,
+      evalId: null,
+      evalDraft: { ...workingEval, id: workingEval.id },
+      templateId: template?.id,
+      manualValues,
+      label: workingEval.name,
+    });
+  }
+
+  if (!workingEval) {
+    return (
+      <>
+        <WorkspacePageHeader
+          description="Run an eval against one or more models."
+          title="Playground"
+        />
+        <SectionCard>
+          <EmptyState>
+            No evals available.{" "}
+            <Button onClick={() => setActivePage("evals")} size="sm" type="button" variant="outline">
+              Create one in the Eval Builder
+            </Button>
+          </EmptyState>
+        </SectionCard>
+      </>
+    );
   }
 
   return (
     <>
       <WorkspacePageHeader
-        description="Run fundraiser generations from the current variant set. Adding more variants automatically enables side-by-side comparison."
+        description="Fill the eval's variables, pick models, and run. Adding more variants automatically enables side-by-side comparison."
         title="Playground"
       />
 
@@ -172,289 +198,125 @@ export function PlaygroundSection({
         <SectionCard>
           <SectionHead
             action={
-              <Button
-                disabled={!sourcePoolStats.total || playgroundRandomizing}
-                onClick={() => void handleRandomizeCaseFromSourcePool()}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <ShuffleIcon />
-                {playgroundRandomizing ? "Randomizing…" : "Randomize"}
+              <Button onClick={() => setActivePage("evals")} size="sm" type="button" variant="ghost">
+                Edit in Builder
               </Button>
             }
-            subtitle={
-              sourcePoolStats.total
-                ? `${sourcePoolStats.total} source rows loaded · ${sourcePoolStats.verified} verified`
-                : "Upload a source CSV in Batches to enable randomization."
-            }
-            title="Data Variables"
+            subtitle={workingEval.description || "Values below feed the {{variables}} in the prompt template."}
+            title="Eval & Variables"
           />
 
           <div className="grid gap-4">
-            <SubSection title="Event Names">
-              <div className="grid gap-3">
-                <Field
-                  label="Organization name"
-                  onChange={(value) =>
-                    setCaseDraft((current) => ({ ...current, organizationName: value }))
-                  }
-                  trailingAdornment={
-                    caseDraft.sourceType === "source_pool" && caseDraft.isVerified ? (
-                      <span className="text-emerald-500">
-                        <BadgeCheckIcon />
-                      </span>
-                    ) : null
-                  }
-                  value={caseDraft.organizationName}
-                />
-                <Field
-                  label="Team name"
-                  onChange={(value) =>
-                    setCaseDraft((current) => ({ ...current, teamName: value }))
-                  }
-                  value={caseDraft.teamName}
-                />
+            <div className="grid gap-1.5">
+              <Label htmlFor="active-eval">Eval</Label>
+              <Select
+                onValueChange={(value) => setActiveEvalId(value)}
+                value={activeEval?.id || ""}
+              >
+                <SelectTrigger className="w-full" id="active-eval">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {evals.map((item) => (
+                    <SelectItem key={item.id} value={item.id || ""}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {workingEval.templates.length > 1 ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor="active-template">Template</Label>
+                <Select onValueChange={setTemplateId} value={template?.id || ""}>
+                  <SelectTrigger className="w-full" id="active-template">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workingEval.templates.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </SubSection>
+            ) : null}
 
-            <SubSection title="Taxonomy Info">
+            <SubSection title="Variables">
               <div className="grid gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="organization-type">Organization Type</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      setCaseDraft((current) => ({
-                        ...current,
-                        ...normalizeTaxonomySelection({
-                          ...current,
-                          organizationType: value,
-                          teamActivity: "",
-                          teamAffiliation: "",
-                        }),
-                      }))
-                    }
-                    value={caseDraft.organizationType}
-                  >
-                    <SelectTrigger className="w-full" id="organization-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizationTypeOptions.map((organizationType) => (
-                        <SelectItem key={organizationType} value={organizationType}>
-                          {organizationType}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {teamActivityConfig.mode === "select" ? (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="team-activity">Team Activity</Label>
-                    <Select
-                      onValueChange={(value) =>
-                        setCaseDraft((current) => ({
-                          ...current,
-                          ...normalizeTaxonomySelection({
-                            ...current,
-                            teamActivity: value,
-                            teamAffiliation: "",
-                          }),
-                        }))
-                      }
-                      value={caseDraft.teamActivity}
-                    >
-                      <SelectTrigger className="w-full" id="team-activity">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teamActivityConfig.options.map((teamActivity) => (
-                          <SelectItem key={teamActivity} value={teamActivity}>
-                            {teamActivity}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <Field
-                    label="Team Activity"
-                    onChange={(value) =>
-                      setCaseDraft((current) => ({ ...current, teamActivity: value }))
-                    }
-                    value={caseDraft.teamActivity}
-                  />
-                )}
-
-                {teamAffiliationConfig.mode === "select" ? (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="team-affiliation">Team Affiliation</Label>
-                    <Select
-                      onValueChange={(value) =>
-                        setCaseDraft((current) => ({
-                          ...current,
-                          teamAffiliation: value === "Other" ? "Other" : value,
-                        }))
-                      }
-                      value={affiliationSelectValue}
-                    >
-                    <SelectTrigger className="w-full" id="team-affiliation">
-                      <SelectValue placeholder="Select affiliation" />
-                    </SelectTrigger>
-                      <SelectContent>
-                        {teamAffiliationConfig.options.map((teamAffiliation) => (
-                          <SelectItem key={teamAffiliation} value={teamAffiliation}>
-                            {teamAffiliation}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Options are filtered from the taxonomy CSV for the selected organization type
-                      and activity.
-                    </p>
-                  </div>
-                ) : (
-                  <Field
-                    label="Team Affiliation"
-                    onChange={(value) =>
-                      setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
-                    }
-                    value={caseDraft.teamAffiliation}
-                  />
-                )}
-
-                {teamAffiliationConfig.mode === "select" && affiliationSelectValue === "Other" ? (
-                  <Field
-                    label="Other Team Affiliation"
-                    onChange={(value) =>
-                      setCaseDraft((current) => ({ ...current, teamAffiliation: value }))
-                    }
-                    value={caseDraft.teamAffiliation === "Other" ? "" : caseDraft.teamAffiliation}
-                  />
+                {workingEval.variables.map((variable) => {
+                  const dataset = variable.datasetId ? datasetsById.get(variable.datasetId) : null;
+                  const isRandom = variable.defaultSource === "random";
+                  return (
+                    <div className="grid gap-1" key={variable.key}>
+                      <Field
+                        label={`${variable.label || variable.key}${variable.required ? " *" : ""}`}
+                        onChange={(value) => setManualValue(variable.key, value)}
+                        placeholder={
+                          isRandom
+                            ? `Leave blank to sample randomly from “${dataset?.name || "dataset"}” (${dataset?.values.length || 0} values)`
+                            : variable.defaultValue
+                              ? `Default: ${variable.defaultValue}`
+                              : undefined
+                        }
+                        value={manualValues[variable.key] ?? ""}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        <code className="font-mono">{`{{${variable.key}}}`}</code>
+                        {isRandom
+                          ? ` · random from ${dataset?.name || "missing dataset"}`
+                          : variable.defaultValue
+                            ? ` · defaults to “${variable.defaultValue}”`
+                            : ""}
+                      </p>
+                    </div>
+                  );
+                })}
+                {!workingEval.variables.length ? (
+                  <EmptyState>This eval has no variables. The template runs as-is.</EmptyState>
                 ) : null}
               </div>
             </SubSection>
 
-            <SubSection title="Cause Tags">
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="sr-only">Cause tags</span>
-                  <Button
-                    aria-label="Randomize cause tags"
-                    onClick={handleRandomizeCauseTags}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ShuffleIcon />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {causeTagOptions.map((tag) => {
-                    const selected = caseDraft.causeTags.includes(tag);
-
-                    return (
-                      <Button
-                        key={tag}
-                        onClick={() => handleCauseTagToggle(tag)}
-                        size="xs"
-                        type="button"
-                        variant={selected ? "default" : "outline"}
-                      >
-                        {tag}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <p
-                  className={`mt-1.5 text-xs ${
-                    causeTagError ? "text-destructive" : "text-muted-foreground"
-                  }`}
-                >
-                  {causeTagError || "Up to 3 tags in the prompt payload."}
+            <SubSection title="Prompt template">
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Edit the template for this run. Use “Save changes to eval” to persist edits.
                 </p>
+                <Switch checked={showTemplateEditor} onCheckedChange={setShowTemplateEditor} />
               </div>
-            </SubSection>
-          </div>
-
-          <div className="flex items-center gap-2 border-t pt-4">
-            <Button
-              disabled={!canSaveCase}
-              onClick={() => void handleSaveCase(normalizeTestCase(caseDraft))}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              Save case
-            </Button>
-            <Button
-              onClick={() => setIsCaseLibraryOpen(true)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              View all cases
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionHead title="Prompt" />
-
-          <div className="grid gap-4">
-            <SubSection title="Template">
-              <div className="grid gap-3">
-                <Field
-                  label="Label"
-                  onChange={(value) => setPromptDraft((current) => ({ ...current, name: value }))}
-                  value={promptDraft.name}
-                />
-                <TextAreaField
-                  label="User"
-                  onChange={(value) =>
-                    setPromptDraft((current) => ({ ...current, userPromptTemplate: value }))
-                  }
-                  value={promptDraft.userPromptTemplate}
-                />
-                <TextAreaField
-                  label="System"
-                  onChange={(value) =>
-                    setPromptDraft((current) => ({ ...current, systemPrompt: value }))
-                  }
-                  value={promptDraft.systemPrompt}
-                />
-                <Field
-                  label="Message Length"
-                  onChange={(value) =>
-                    setPromptDraft((current) => ({
-                      ...current,
-                      messageLengthInstruction: value,
-                    }))
-                  }
-                  value={promptDraft.messageLengthInstruction}
-                />
-              </div>
-            </SubSection>
-
-            <SubSection title="Message Parts">
-              <div className="grid gap-3">
-                <TextAreaField
-                  label="Prefix"
-                  onChange={(value) =>
-                    setPromptDraft((current) => ({ ...current, prefixText: value }))
-                  }
-                  value={promptDraft.prefixText}
-                />
-                <TextAreaField
-                  label="Suffix"
-                  onChange={(value) =>
-                    setPromptDraft((current) => ({ ...current, suffixText: value }))
-                  }
-                  value={promptDraft.suffixText}
-                />
-              </div>
+              {showTemplateEditor && template ? (
+                <div className="grid gap-3">
+                  <TextAreaField
+                    label="System prompt"
+                    onChange={(value) => patchTemplateDraft({ systemPrompt: value })}
+                    value={template.systemPrompt}
+                  />
+                  <TextAreaField
+                    label="User prompt"
+                    onChange={(value) => patchTemplateDraft({ userPromptTemplate: value })}
+                    value={template.userPromptTemplate}
+                  />
+                  {validation?.errors.length ? (
+                    <p className="text-xs text-destructive">
+                      {validation.errors.map((issue) => issue.message).join(" ")}
+                    </p>
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      disabled={!workingEval.id}
+                      onClick={() => void handleSaveEval(workingEval)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Save changes to eval
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </SubSection>
 
             <SubSection title="Model Parameters">
@@ -462,16 +324,13 @@ export function PlaygroundSection({
                 <p className="text-xs text-muted-foreground">
                   Enable shared generation parameters for this run.
                 </p>
-                <Switch
-                  checked={isSharedModelParamsEnabled}
-                  onCheckedChange={handleSharedModelParamsToggle}
-                />
+                <Switch checked={isSharedModelParamsEnabled} onCheckedChange={handleSharedModelParamsToggle} />
               </div>
               {isSharedModelParamsEnabled ? (
                 <div className="grid grid-cols-2 gap-3">
-                    <Field
-                      helpText={HELP_TEXT.temperature}
-                      label="Temperature"
+                  <Field
+                    helpText={HELP_TEXT.temperature}
+                    label="Temperature"
                     max="1"
                     min="0"
                     onChange={(value) =>
@@ -534,236 +393,191 @@ export function PlaygroundSection({
               ) : null}
             </SubSection>
           </div>
+        </SectionCard>
 
-          <div className="flex items-center gap-2 border-t pt-4">
-            <Button
-              disabled={!canSavePrompt}
-              onClick={() => void handleSavePrompt()}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              Save Prompt
-            </Button>
-            <Button
-              onClick={() => setIsPromptLibraryOpen(true)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              View all Prompts
-            </Button>
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button
+                onClick={() =>
+                  setVariants((current) => [
+                    ...current,
+                    {
+                      ...createInitialVariant(enabledModelIds),
+                      label: `Variant ${current.length + 1}`,
+                    },
+                  ])
+                }
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Add variant
+              </Button>
+            }
+            subtitle={
+              playgroundMode === "compare"
+                ? "Comparison is active. Each variant runs side by side on the same variable values."
+                : "Single mode is active. Add another variant to enable side-by-side comparison."
+            }
+            title="Models"
+          />
+
+          <div className="grid gap-4">
+            {variants.map((variant, index) => (
+              <Card className="gap-0" key={variant.id}>
+                <CardContent className="grid gap-4 p-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field
+                      label="Label"
+                      onChange={(value) => updateVariant(variant.id, { label: value })}
+                      value={variant.label}
+                    />
+                    <div className="grid gap-1.5">
+                      <Label className="flex items-center gap-1.5" htmlFor={`${variant.id}-model`}>
+                        <span>Model</span>
+                        <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
+                      </Label>
+                      <Select
+                        onValueChange={(value) => updateVariant(variant.id, { model: value })}
+                        value={variant.model}
+                      >
+                        <SelectTrigger className="w-full" id={`${variant.id}-model`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableModelOptions.map((model) => (
+                            <SelectItem disabled={model.unavailable} key={model.value} value={model.value}>
+                              {formatModelOption(model)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Override Model Parameters
+                        </h4>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Show and apply per-variant generation overrides.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={Boolean(variant.useOverrides)}
+                        onCheckedChange={(enabled: boolean) =>
+                          handleVariantOverrideToggle(variant.id, enabled)
+                        }
+                      />
+                    </div>
+                    {variant.useOverrides ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <Field
+                          helpText={HELP_TEXT.temperature}
+                          label="Temperature Override"
+                          max="1"
+                          min="0"
+                          onChange={(value) =>
+                            updateVariant(variant.id, {
+                              temperature: parseVariantDecimalInput(value, { min: 0, max: 1 }),
+                            })
+                          }
+                          step="0.01"
+                          type="number"
+                          value={variant.temperature}
+                        />
+                        <Field
+                          label="Max Tokens Override"
+                          onChange={(value) =>
+                            updateVariant(variant.id, { maxTokens: parseVariantIntegerInput(value) })
+                          }
+                          type="number"
+                          value={variant.maxTokens}
+                        />
+                        <Field
+                          helpText={HELP_TEXT.topP}
+                          label="Top P Override"
+                          max="1"
+                          min="0"
+                          onChange={(value) =>
+                            updateVariant(variant.id, {
+                              topP: parseVariantDecimalInput(value, { min: 0, max: 1 }),
+                            })
+                          }
+                          step="0.01"
+                          type="number"
+                          value={variant.topP}
+                        />
+                        <Field
+                          helpText={HELP_TEXT.seed}
+                          inputMode="numeric"
+                          label="Seed Override"
+                          onChange={(value) =>
+                            updateVariant(variant.id, { seed: clampIntegerInput(value) })
+                          }
+                          value={variant.seed}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {index > 0 ? (
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() =>
+                          setVariants((current) => current.filter((item) => item.id !== variant.id))
+                        }
+                        size="sm"
+                        type="button"
+                        variant="destructive"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid gap-2 border-t pt-4">
+            {missingRequired.length ? (
+              <p className="text-xs text-destructive">
+                Missing required values: {missingRequired.map((variable) => variable.label || variable.key).join(", ")}
+              </p>
+            ) : null}
+            {validation && !validation.valid ? (
+              <p className="text-xs text-destructive">Fix template errors before running.</p>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <Button
+                disabled={playgroundGenerating || Boolean(missingRequired.length) || (validation ? !validation.valid : false)}
+                onClick={runEval}
+                type="button"
+              >
+                <BoltIcon />
+                {playgroundGenerating ? "Running…" : "Run"}
+              </Button>
+              <Button
+                onClick={clearManualValues}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <ShuffleIcon />
+                Clear values
+              </Button>
+            </div>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard className="mt-6">
-        <SectionHead
-          action={
-            <Button
-              onClick={() =>
-                setVariants((current) => [
-                  ...current,
-                  {
-                    ...createInitialVariant(enabledModelIds),
-                    label: `Variant ${current.length + 1}`,
-                  },
-                ])
-              }
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              Add variant
-            </Button>
-          }
-          subtitle={
-            playgroundMode === "compare"
-              ? "Comparison is active. Each variant is generated side by side for the same fundraiser input."
-              : "Single mode is active. Add another variant to enable side-by-side comparison."
-          }
-          title="Model Selection"
-        />
-
-        <div className="grid gap-4">
-          {variants.map((variant, index) => (
-            <Card className="gap-0" key={variant.id}>
-              <CardContent className="grid gap-4 p-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {variant.label}
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <Field
-                    label="Label"
-                    onChange={(value) => updateVariant(variant.id, { label: value })}
-                    value={variant.label}
-                  />
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`${variant.id}-prompt-source`}>Prompt Source</Label>
-                    <Select
-                      onValueChange={(value) => updateVariant(variant.id, { promptSource: value })}
-                      value={variant.promptSource}
-                    >
-                      <SelectTrigger className="w-full" id={`${variant.id}-prompt-source`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="current">Current draft</SelectItem>
-                        {promptTemplates.map((template) => (
-                          <SelectItem
-                            key={template.id ?? template.name}
-                            value={template.id ?? "current"}
-                          >
-                            {template.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="flex items-center gap-1.5" htmlFor={`${variant.id}-model`}>
-                      <span>Model</span>
-                      <HelpTooltip text="Pricing is shown in the menu as cost per 1M input and 1M output tokens." />
-                    </Label>
-                    <Select
-                      onValueChange={(value) => updateVariant(variant.id, { model: value })}
-                      value={variant.model}
-                    >
-                      <SelectTrigger className="w-full" id={`${variant.id}-model`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableModelOptions.map((model) => (
-                          <SelectItem
-                            disabled={model.unavailable}
-                            key={model.value}
-                            value={model.value}
-                          >
-                            {formatModelOption(model)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Override Model Parameters
-                      </h4>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Show and apply per-variant generation overrides.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={Boolean(variant.useOverrides)}
-                      onCheckedChange={(enabled: boolean) =>
-                        handleVariantOverrideToggle(variant.id, enabled)
-                      }
-                    />
-                  </div>
-                  {variant.useOverrides ? (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <Field
-                        helpText={HELP_TEXT.temperature}
-                        label="Temperature Override"
-                        max="1"
-                        min="0"
-                        onChange={(value) =>
-                          updateVariant(variant.id, {
-                            temperature: parseVariantDecimalInput(value, { min: 0, max: 1 }),
-                          })
-                        }
-                        step="0.01"
-                        type="number"
-                        value={variant.temperature}
-                      />
-                      <Field
-                        label="Max Tokens Override"
-                        onChange={(value) =>
-                          updateVariant(variant.id, { maxTokens: parseVariantIntegerInput(value) })
-                        }
-                        type="number"
-                        value={variant.maxTokens}
-                      />
-                      <Field
-                        helpText={HELP_TEXT.topP}
-                        label="Top P Override"
-                        max="1"
-                        min="0"
-                        onChange={(value) =>
-                          updateVariant(variant.id, {
-                            topP: parseVariantDecimalInput(value, { min: 0, max: 1 }),
-                          })
-                        }
-                        step="0.01"
-                        type="number"
-                        value={variant.topP}
-                      />
-                      <Field
-                        helpText={HELP_TEXT.seed}
-                        inputMode="numeric"
-                        label="Seed Override"
-                        onChange={(value) =>
-                          updateVariant(variant.id, { seed: clampIntegerInput(value) })
-                        }
-                        value={variant.seed}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                {index > 0 ? (
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() =>
-                        setVariants((current) => current.filter((item) => item.id !== variant.id))
-                      }
-                      size="sm"
-                      type="button"
-                      variant="destructive"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 border-t pt-4">
-          <Button
-            disabled={playgroundGenerating}
-            onClick={() => {
-              setDismissedResultKey("");
-              void handleGenerate();
-            }}
-            type="button"
-          >
-            <BoltIcon />
-            {playgroundGenerating ? "Running…" : "Run"}
-          </Button>
-          <Button
-            disabled={playgroundGenerating}
-            onClick={() => downloadCsv("test-cases.csv", toCsv(testCases))}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            Export saved cases
-          </Button>
-        </div>
-      </SectionCard>
-
       {isResultDrawerOpen ? (
         <DrawerShell
-          helperText="Showing the current playground response only. It is not saved to history."
+          helperText="Showing the current playground response. It is also saved to history."
           onClose={() => setDismissedResultKey(latestResultKey)}
           title="Latest Result"
         >
@@ -779,38 +593,6 @@ export function PlaygroundSection({
             <EmptyState>Run to open the latest result here.</EmptyState>
           )}
         </DrawerShell>
-      ) : null}
-
-      {isCaseLibraryOpen ? (
-        <LibraryDrawer
-          emptyState="No saved cases yet."
-          helperText="Select a saved case to load it into the editor."
-          items={testCases}
-          onClose={() => setIsCaseLibraryOpen(false)}
-          onDelete={handleDeleteCase}
-          onSelect={(testCase) => {
-            setCaseDraft(normalizeTestCase(testCase));
-            setIsCaseLibraryOpen(false);
-          }}
-          title="Saved Cases"
-          type="case"
-        />
-      ) : null}
-
-      {isPromptLibraryOpen ? (
-        <LibraryDrawer
-          emptyState="No saved recipes yet."
-          helperText="Select a saved recipe to load it into the prompt editor."
-          items={promptTemplates}
-          onClose={() => setIsPromptLibraryOpen(false)}
-          onDelete={handleDeletePrompt}
-          onSelect={(template) => {
-            setPromptDraft(template);
-            setIsPromptLibraryOpen(false);
-          }}
-          title="Saved Recipes"
-          type="prompt"
-        />
       ) : null}
     </>
   );

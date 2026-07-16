@@ -13,6 +13,19 @@ import type {
   WorkspaceSettings,
 } from "@/lib/types/domain";
 import type { SaveRatingRequest } from "@/lib/types/api";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+
+/** Input for eval-based runs assembled by the sections; shared run config is filled in by actions. */
+export interface EvalRunInput {
+  mode?: "single" | "compare";
+  label?: string;
+  evalId?: string | null;
+  evalDraft?: Partial<EvalDefinition>;
+  templateId?: string;
+  manualValues?: Record<string, string>;
+  csvRows?: Record<string, string>[] | null;
+  columnMapping?: Record<string, string> | null;
+}
 
 export interface WorkspaceSnapshot extends AppSettings {}
 
@@ -58,6 +71,16 @@ export interface WorkspaceState {
   handleDeleteCase: (id: string) => Promise<void>;
   handleDeletePrompt: (id: string) => Promise<void>;
   handleGenerate: () => Promise<void>;
+  handleEvalGenerate: (input: EvalRunInput) => Promise<void>;
+  handleEvalBatchRun: (input: EvalRunInput) => Promise<void>;
+  handleSaveEval: (entry: Partial<EvalDefinition>) => Promise<EvalDefinition | null>;
+  handleDeleteEval: (id: string) => Promise<void>;
+  handleSaveDataset: (entry: Partial<Dataset>) => Promise<Dataset | null>;
+  handleDeleteDataset: (id: string) => Promise<void>;
+  evals: EvalDefinition[];
+  datasets: Dataset[];
+  activeEvalId: string;
+  setActiveEvalId: (id: string) => void;
   handleImportSourcePool: (file: File | null) => Promise<void>;
   handleRandomizeCaseFromSourcePool: () => Promise<void>;
   handleRandomizeCauseTags: () => void;
@@ -118,58 +141,48 @@ export interface WorkspaceStatusViewModel {
 }
 
 export interface PlaygroundSectionProps {
+  activeEvalId: WorkspaceState["activeEvalId"];
   availableModelOptions: WorkspaceState["availableModelOptions"];
-  canSaveCase: WorkspaceState["canSaveCase"];
-  canSavePrompt: WorkspaceState["canSavePrompt"];
-  caseDraft: WorkspaceState["caseDraft"];
-  causeTagOptions: WorkspaceState["causeTagOptions"];
+  datasets: WorkspaceState["datasets"];
   enabledModelIds: WorkspaceState["enabledModelIds"];
+  evals: WorkspaceState["evals"];
   generationSettings: WorkspaceState["generationSettings"];
-  handleDeleteCase: WorkspaceState["handleDeleteCase"];
-  handleDeletePrompt: WorkspaceState["handleDeletePrompt"];
-  handleGenerate: WorkspaceState["handleGenerate"];
-  handleRandomizeCaseFromSourcePool: WorkspaceState["handleRandomizeCaseFromSourcePool"];
-  handleRandomizeCauseTags: WorkspaceState["handleRandomizeCauseTags"];
-  handleSaveCase: WorkspaceState["handleSaveCase"];
-  handleSavePrompt: WorkspaceState["handleSavePrompt"];
-  normalizeTestCase: WorkspaceState["normalizeTestCase"];
+  handleEvalGenerate: WorkspaceState["handleEvalGenerate"];
+  handleSaveEval: WorkspaceState["handleSaveEval"];
   playgroundGenerating: WorkspaceState["playgroundGenerating"];
   playgroundMode: WorkspaceState["playgroundMode"];
-  playgroundRandomizing: WorkspaceState["playgroundRandomizing"];
   playgroundRun: WorkspaceState["playgroundRun"];
-  promptDraft: WorkspaceState["promptDraft"];
-  promptTemplates: WorkspaceState["promptTemplates"];
-  setCaseDraft: WorkspaceState["setCaseDraft"];
+  setActiveEvalId: WorkspaceState["setActiveEvalId"];
+  setActivePage: WorkspaceState["setActivePage"];
   setGenerationSettings: WorkspaceState["setGenerationSettings"];
-  setPromptDraft: WorkspaceState["setPromptDraft"];
   setVariants: WorkspaceState["setVariants"];
-  sourcePoolStats: WorkspaceState["sourcePoolStats"];
-  testCases: WorkspaceState["testCases"];
   updateVariant: WorkspaceState["updateVariant"];
   variants: WorkspaceState["variants"];
 }
 
 export interface BatchSectionProps {
+  activeEvalId: WorkspaceState["activeEvalId"];
   availableModelOptions: WorkspaceState["availableModelOptions"];
   batchGenerating: WorkspaceState["batchGenerating"];
-  batchSampleCount: WorkspaceState["batchSampleCount"];
-  batchSelection: WorkspaceState["batchSelection"];
-  batchVerificationFilter: WorkspaceState["batchVerificationFilter"];
+  datasets: WorkspaceState["datasets"];
   enabledModelIds: WorkspaceState["enabledModelIds"];
-  handleBatchRun: WorkspaceState["handleBatchRun"];
-  handleSaveImportedCases: WorkspaceState["handleSaveImportedCases"];
-  importedCases: WorkspaceState["importedCases"];
-  promptTemplates: WorkspaceState["promptTemplates"];
-  setBatchSampleCount: WorkspaceState["setBatchSampleCount"];
-  setBatchSelection: WorkspaceState["setBatchSelection"];
-  setBatchVerificationFilter: WorkspaceState["setBatchVerificationFilter"];
-  setImportedCases: WorkspaceState["setImportedCases"];
+  evals: WorkspaceState["evals"];
+  handleEvalBatchRun: WorkspaceState["handleEvalBatchRun"];
+  setActiveEvalId: WorkspaceState["setActiveEvalId"];
   setVariants: WorkspaceState["setVariants"];
-  shapeImportedCase: WorkspaceState["shapeImportedCase"];
-  sourcePoolStats: WorkspaceState["sourcePoolStats"];
-  testCases: WorkspaceState["testCases"];
   updateVariant: WorkspaceState["updateVariant"];
   variants: WorkspaceState["variants"];
+}
+
+export interface EvalsSectionProps {
+  datasets: WorkspaceState["datasets"];
+  evals: WorkspaceState["evals"];
+  handleDeleteDataset: WorkspaceState["handleDeleteDataset"];
+  handleDeleteEval: WorkspaceState["handleDeleteEval"];
+  handleSaveDataset: WorkspaceState["handleSaveDataset"];
+  handleSaveEval: WorkspaceState["handleSaveEval"];
+  setActiveEvalId: WorkspaceState["setActiveEvalId"];
+  setActivePage: WorkspaceState["setActivePage"];
 }
 
 export interface HistorySectionProps {
