@@ -1,5 +1,4 @@
 import { formatShortId } from "@/lib/workspace";
-import type { TestCase, WorkspaceSettings } from "@/lib/types/domain";
 
 export const HELP_TEXT = {
   temperature:
@@ -59,27 +58,4 @@ export function clampIntegerInput(value: string) {
   }
 
   return value.slice(0, -1);
-}
-
-export function getAffiliationSelectValue(
-  teamAffiliation: TestCase["teamAffiliation"],
-  teamAffiliationConfig: Pick<WorkspaceSettings, never> & {
-    allowsOther: boolean;
-    mode: "select" | "text";
-    options: string[];
-  },
-) {
-  if (teamAffiliationConfig.mode !== "select") {
-    return "";
-  }
-
-  if (teamAffiliationConfig.options.includes(teamAffiliation)) {
-    return teamAffiliation;
-  }
-
-  if (teamAffiliationConfig.allowsOther && teamAffiliation) {
-    return "Other";
-  }
-
-  return "";
 }

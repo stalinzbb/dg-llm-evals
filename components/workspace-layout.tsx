@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 
 import {
   BatchesIcon,
+  EvalsIcon,
   HistoryIcon,
   LogoGlyph,
   LogoutIcon,
@@ -52,6 +53,7 @@ const workspaceNavItems: Array<{
   page: Exclude<WorkspacePage, "settings">;
 }> = [
   { label: "Playground", icon: PlaygroundIcon, page: "playground" },
+  { label: "Evals", icon: EvalsIcon, page: "evals" },
   { label: "Batches", icon: BatchesIcon, page: "batches" },
   { label: "History", icon: HistoryIcon, page: "history" },
 ];
@@ -101,7 +103,7 @@ export default function WorkspaceLayout({
       <Head>
         <title>{title || "Eval AI"}</title>
         <meta
-          content={description || "Generate, compare, and batch-evaluate fundraiser messages."}
+          content={description || "Build evals, compare models, and batch-evaluate LLM content."}
           name="description"
         />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
@@ -118,7 +120,7 @@ export default function WorkspaceLayout({
                   Eval AI
                 </p>
                 <p className="truncate text-xs text-sidebar-foreground/60">
-                  Fundraiser evals
+                  LLM eval builder
                 </p>
               </div>
             </div>
@@ -208,7 +210,9 @@ export default function WorkspaceLayout({
               {currentPage}
             </span>
           </header>
-          <div className="flex-1 overflow-y-auto p-6">{children}</div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-6xl px-6 py-8 lg:px-8">{children}</div>
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </>

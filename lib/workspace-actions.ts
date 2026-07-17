@@ -1,38 +1,28 @@
 import { startTransition, type Dispatch, type SetStateAction } from "react";
 
 import { filterEnabledModelIds, normalizeEnabledModelIds } from "@/lib/constants";
-import { parseCsv } from "@/lib/csv";
-import { normalizeTestCase } from "@/lib/prompt";
-import { randomizeCauseTags } from "@/lib/source-pool";
 import { applyThemePreference, writeBrowserModelSettings, writeStoredTheme } from "@/lib/workspace-browser";
 import {
   batchRunRequest,
-  deletePromptTemplateRequest,
-  deleteTestCaseRequest,
+  deleteDatasetRequest,
+  deleteEvalRequest,
   generateRunRequest,
-  importSourcePoolChunkRequest,
-  randomSourcePoolRowRequest,
-  sampleSourcePoolRequest,
-  savePromptTemplateRequest,
+  saveDatasetRequest,
+  saveEvalRequest,
   saveRatingRequest,
-  saveTestCasesRequest,
   saveWorkspaceSettingsRequest,
 } from "@/lib/workspace-api";
 import type { SaveRatingRequest } from "@/lib/types/api";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
 import type {
   GenerationSettings,
-  PromptTemplate,
   Run,
-  SourcePoolStats,
-  TestCase,
   Theme,
   Variant,
   WorkspacePage,
   WorkspaceSettings,
 } from "@/lib/types/domain";
-import type { HandleBatchRunOptions, WorkspaceState } from "@/lib/types/workspace";
-
-const SOURCE_POOL_IMPORT_CHUNK_SIZE = 250;
+import type { EvalRunInput, WorkspaceState } from "@/lib/types/workspace";
 
 function ensureErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -43,33 +33,20 @@ function updateRunCollection(run: Run, currentRuns: Run[]) {
 }
 
 interface CreateWorkspaceActionsArgs {
-  batchSampleCount: string;
-  batchSelection: string[];
-  batchVerificationFilter: "any" | "verified" | "unverified";
-  caseDraft: TestCase;
   generationSettings: GenerationSettings;
-  importedCases: TestCase[];
-  normalizedPromptDraft: PromptTemplate;
   playgroundGenerating: boolean;
   playgroundMode: "single" | "compare";
-  promptDraft: PromptTemplate;
-  promptTemplates: PromptTemplate[];
   setActivePage: Dispatch<SetStateAction<WorkspacePage>>;
   setBatchGenerating: Dispatch<SetStateAction<boolean>>;
-  setCaseDraft: Dispatch<SetStateAction<TestCase>>;
+  setDatasets: Dispatch<SetStateAction<Dataset[]>>;
   setErrorMessage: Dispatch<SetStateAction<string>>;
-  setImportedCases: Dispatch<SetStateAction<TestCase[]>>;
+  setEvals: Dispatch<SetStateAction<EvalDefinition[]>>;
   setPlaygroundGenerating: Dispatch<SetStateAction<boolean>>;
-  setPlaygroundRandomizing: Dispatch<SetStateAction<boolean>>;
   setPlaygroundRun: Dispatch<SetStateAction<Run | null>>;
-  setPromptTemplates: Dispatch<SetStateAction<PromptTemplate[]>>;
   setRuns: Dispatch<SetStateAction<Run[]>>;
   setSelectedRunId: Dispatch<SetStateAction<string>>;
   setSettings: Dispatch<SetStateAction<WorkspaceSettings>>;
-  setSourcePoolImporting: Dispatch<SetStateAction<boolean>>;
-  setSourcePoolStats: Dispatch<SetStateAction<SourcePoolStats>>;
   setStatusMessage: Dispatch<SetStateAction<string>>;
-  setTestCases: Dispatch<SetStateAction<TestCase[]>>;
   setTheme: Dispatch<SetStateAction<Theme>>;
   setVariants: Dispatch<SetStateAction<Variant[]>>;
   settings: WorkspaceSettings;
@@ -78,33 +55,20 @@ interface CreateWorkspaceActionsArgs {
 }
 
 export function createWorkspaceActions({
-  batchSampleCount,
-  batchSelection,
-  batchVerificationFilter,
-  caseDraft,
   generationSettings,
-  importedCases,
-  normalizedPromptDraft,
   playgroundGenerating,
   playgroundMode,
-  promptDraft,
-  promptTemplates,
   setActivePage,
   setBatchGenerating,
-  setCaseDraft,
+  setDatasets,
   setErrorMessage,
-  setImportedCases,
+  setEvals,
   setPlaygroundGenerating,
-  setPlaygroundRandomizing,
   setPlaygroundRun,
-  setPromptTemplates,
   setRuns,
   setSelectedRunId,
   setSettings,
-  setSourcePoolImporting,
-  setSourcePoolStats,
   setStatusMessage,
-  setTestCases,
   setTheme,
   setVariants,
   settings,
@@ -114,17 +78,13 @@ export function createWorkspaceActions({
   WorkspaceState,
   | "dismissMessage"
   | "toggleTheme"
-  | "handleSaveCase"
-  | "handleSaveImportedCases"
-  | "handleSavePrompt"
-  | "handleGenerate"
-  | "handleBatchRun"
-  | "handleImportSourcePool"
-  | "handleRandomizeCaseFromSourcePool"
-  | "handleRandomizeCauseTags"
+  | "handleEvalGenerate"
+  | "handleEvalBatchRun"
+  | "handleSaveEval"
+  | "handleDeleteEval"
+  | "handleSaveDataset"
+  | "handleDeleteDataset"
   | "handleSaveRating"
-  | "handleDeleteCase"
-  | "handleDeletePrompt"
   | "handleSaveSettings"
   | "updateVariant"
 > {
@@ -150,52 +110,7 @@ export function createWorkspaceActions({
     });
   }
 
-  async function handleSaveCase(singleCase: TestCase) {
-    clearMessages();
-    try {
-      const payloadCase = {
-        ...normalizeTestCase(singleCase),
-        id: null,
-      };
-      const payload = await saveTestCasesRequest(payloadCase);
-      setTestCases(payload.testCases || []);
-      setStatusMessage("Saved test case library.");
-    } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to save test case."));
-    }
-  }
-
-  async function handleSaveImportedCases() {
-    if (!importedCases.length) {
-      return;
-    }
-    clearMessages();
-    try {
-      const payload = await saveTestCasesRequest(importedCases);
-      setTestCases(payload.testCases || []);
-      setImportedCases([]);
-      setStatusMessage("Imported cases were saved to the library.");
-    } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to save imported cases."));
-    }
-  }
-
-  async function handleSavePrompt() {
-    clearMessages();
-    try {
-      const payloadPrompt: PromptTemplate = {
-        ...normalizedPromptDraft,
-        id: null,
-      };
-      const payload = await savePromptTemplateRequest(payloadPrompt);
-      setPromptTemplates(payload.promptTemplates || []);
-      setStatusMessage("Saved prompt template.");
-    } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to save prompt template."));
-    }
-  }
-
-  async function handleGenerate() {
+  async function handleEvalGenerate(input: EvalRunInput) {
     if (playgroundGenerating) {
       return;
     }
@@ -203,9 +118,12 @@ export function createWorkspaceActions({
     setPlaygroundGenerating(true);
     try {
       const payload = await generateRunRequest({
-        mode: playgroundMode,
-        caseInput: caseDraft,
-        promptDraft,
+        mode: input.mode || playgroundMode,
+        label: input.label,
+        evalId: input.evalId || null,
+        evalDraft: input.evalDraft,
+        templateId: input.templateId,
+        manualValues: input.manualValues || {},
         generationSettings,
         settings,
         variants,
@@ -222,59 +140,21 @@ export function createWorkspaceActions({
     }
   }
 
-  async function handleBatchRun(options: HandleBatchRunOptions = {}) {
+  async function handleEvalBatchRun(input: EvalRunInput) {
     clearMessages();
     setBatchGenerating(true);
     try {
-      const {
-        includeSavedCases = true,
-        includeImportedCases = true,
-        includeSourcePool = true,
-      } = options;
-
-      if (!promptTemplates.length) {
-        throw new Error("Save at least one prompt before running a batch.");
+      if (!input.csvRows?.length) {
+        throw new Error("Import a CSV with at least one row to run a batch.");
       }
-
-      if (variants.some((variant) => variant.promptSource === "current")) {
-        throw new Error("Batch runs require saved prompts. Select a saved prompt for each variant.");
-      }
-
-      let sampledCount = 0;
-      let requestedSampleCount = 0;
-      let sampledSourceCases: TestCase[] = [];
-
-      if (includeSourcePool && (Number(batchSampleCount) || 0) > 0) {
-        requestedSampleCount = Number(batchSampleCount) || 0;
-        const samplePayload = await sampleSourcePoolRequest({
-          count: requestedSampleCount,
-          verificationFilter: batchVerificationFilter,
-        });
-
-        sampledCount = samplePayload.actualCount || 0;
-        sampledSourceCases = (samplePayload.rows || []).map((row) =>
-          normalizeTestCase({
-            sourceRecordId: row.id,
-            sourceType: "source_pool",
-            organizationUuid: row.organizationUuid,
-            isVerified: row.isVerified,
-            organizationName: row.organizationName,
-            teamName: row.teamName,
-            organizationType: row.organizationType,
-            teamActivity: row.teamActivity,
-            teamAffiliation: row.teamAffiliation,
-            causeTags: randomizeCauseTags(),
-          }),
-        );
-      }
-
-      const selectedCaseIds = includeSavedCases ? batchSelection : [];
-      const inlineCases = [...(includeImportedCases ? importedCases : []), ...sampledSourceCases];
-
       const payload = await batchRunRequest({
-        caseIds: selectedCaseIds,
-        inlineCases,
-        promptDraft,
+        label: input.label,
+        evalId: input.evalId || null,
+        evalDraft: input.evalDraft,
+        templateId: input.templateId,
+        manualValues: input.manualValues || {},
+        csvRows: input.csvRows,
+        columnMapping: input.columnMapping || null,
         generationSettings,
         settings,
         variants,
@@ -282,13 +162,7 @@ export function createWorkspaceActions({
       setRuns((current) => updateRunCollection(payload.run, current));
       setSelectedRunId(payload.run.id);
       startTransition(() => setActivePage("history"));
-      if (requestedSampleCount && sampledCount !== requestedSampleCount) {
-        setStatusMessage(
-          `Batch run completed. Sampled ${sampledCount} of ${requestedSampleCount} requested source-pool rows.`,
-        );
-      } else {
-        setStatusMessage("Batch run completed.");
-      }
+      setStatusMessage("Batch run completed.");
     } catch (error) {
       setErrorMessage(ensureErrorMessage(error, "Failed to run batch."));
     } finally {
@@ -296,80 +170,52 @@ export function createWorkspaceActions({
     }
   }
 
-  async function handleImportSourcePool(file: File | null) {
-    if (!file) {
-      return;
-    }
+  async function handleSaveEval(entry: Partial<EvalDefinition>): Promise<EvalDefinition | null> {
     clearMessages();
-    setSourcePoolImporting(true);
     try {
-      const csvText = await file.text();
-      const records = parseCsv(csvText);
-
-      if (!records.length) {
-        throw new Error("The CSV did not contain any importable rows.");
-      }
-
-      let aggregateImportedCount = 0;
-      let aggregateSkippedCount = 0;
-      let latestStats: SourcePoolStats = { total: 0, verified: 0, unverified: 0 };
-
-      for (let index = 0; index < records.length; index += SOURCE_POOL_IMPORT_CHUNK_SIZE) {
-        const chunk = records.slice(index, index + SOURCE_POOL_IMPORT_CHUNK_SIZE);
-        const payload = await importSourcePoolChunkRequest(chunk, index === 0);
-        aggregateImportedCount += payload.importedCount || 0;
-        aggregateSkippedCount += payload.skippedCount || 0;
-        latestStats = payload.stats || latestStats;
-      }
-
-      setSourcePoolStats(latestStats);
-      setStatusMessage(
-        `Imported ${aggregateImportedCount} source rows${aggregateSkippedCount ? ` and skipped ${aggregateSkippedCount}` : ""}.`,
-      );
+      const payload = await saveEvalRequest(entry);
+      setEvals(payload.evals || []);
+      setStatusMessage(`Saved eval "${payload.saved?.name || entry.name || ""}".`);
+      return payload.saved || null;
     } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to import source pool."));
-    } finally {
-      setSourcePoolImporting(false);
+      setErrorMessage(ensureErrorMessage(error, "Failed to save eval."));
+      return null;
     }
   }
 
-  async function handleRandomizeCaseFromSourcePool() {
+  async function handleDeleteEval(id: string) {
     clearMessages();
-    setPlaygroundRandomizing(true);
     try {
-      const payload = await randomSourcePoolRowRequest("any");
-      if (!payload.row) {
-        throw new Error("No source-pool rows available. Upload a source CSV first.");
-      }
-
-      setCaseDraft((current) =>
-        normalizeTestCase({
-          ...current,
-          sourceRecordId: payload.row?.id,
-          sourceType: "source_pool",
-          organizationUuid: payload.row?.organizationUuid,
-          isVerified: payload.row?.isVerified,
-          organizationName: payload.row?.organizationName,
-          teamName: payload.row?.teamName,
-          organizationType: payload.row?.organizationType,
-          teamActivity: payload.row?.teamActivity,
-          teamAffiliation: payload.row?.teamAffiliation,
-          causeTags: current.causeTags,
-        }),
-      );
+      const payload = await deleteEvalRequest(id);
+      setEvals(payload.evals || []);
+      setStatusMessage("Deleted eval.");
     } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to randomize case."));
-    } finally {
-      setPlaygroundRandomizing(false);
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete eval."));
     }
   }
 
-  function handleRandomizeCauseTags() {
+  async function handleSaveDataset(entry: Partial<Dataset>): Promise<Dataset | null> {
     clearMessages();
-    setCaseDraft((current) => ({
-      ...current,
-      causeTags: randomizeCauseTags(),
-    }));
+    try {
+      const payload = await saveDatasetRequest(entry);
+      setDatasets(payload.datasets || []);
+      setStatusMessage(`Saved dataset "${payload.saved?.name || entry.name || ""}".`);
+      return payload.saved || null;
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to save dataset."));
+      return null;
+    }
+  }
+
+  async function handleDeleteDataset(id: string) {
+    clearMessages();
+    try {
+      const payload = await deleteDatasetRequest(id);
+      setDatasets(payload.datasets || []);
+      setStatusMessage("Deleted dataset.");
+    } catch (error) {
+      setErrorMessage(ensureErrorMessage(error, "Failed to delete dataset."));
+    }
   }
 
   async function handleSaveRating(payload: SaveRatingRequest) {
@@ -378,28 +224,6 @@ export function createWorkspaceActions({
     setRuns((current) => current.map((run) => (run.id === response.run.id ? response.run : run)));
     setSelectedRunId(response.run.id);
     setStatusMessage("Saved rating.");
-  }
-
-  async function handleDeleteCase(id: string) {
-    clearMessages();
-    try {
-      const payload = await deleteTestCaseRequest(id);
-      setTestCases(payload.testCases || []);
-      setStatusMessage("Deleted saved case.");
-    } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to delete case."));
-    }
-  }
-
-  async function handleDeletePrompt(id: string) {
-    clearMessages();
-    try {
-      const payload = await deletePromptTemplateRequest(id);
-      setPromptTemplates(payload.promptTemplates || []);
-      setStatusMessage("Deleted saved recipe.");
-    } catch (error) {
-      setErrorMessage(ensureErrorMessage(error, "Failed to delete prompt."));
-    }
   }
 
   async function handleSaveSettings(nextSettings: Partial<WorkspaceSettings>) {
@@ -441,17 +265,13 @@ export function createWorkspaceActions({
   return {
     dismissMessage,
     toggleTheme,
-    handleSaveCase,
-    handleSaveImportedCases,
-    handleSavePrompt,
-    handleGenerate,
-    handleBatchRun,
-    handleImportSourcePool,
-    handleRandomizeCaseFromSourcePool,
-    handleRandomizeCauseTags,
+    handleEvalGenerate,
+    handleEvalBatchRun,
+    handleSaveEval,
+    handleDeleteEval,
+    handleSaveDataset,
+    handleDeleteDataset,
     handleSaveRating,
-    handleDeleteCase,
-    handleDeletePrompt,
     handleSaveSettings,
     updateVariant,
   };

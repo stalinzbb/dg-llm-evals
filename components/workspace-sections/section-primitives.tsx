@@ -85,8 +85,8 @@ interface SectionCardProps {
 
 export function SectionCard({ children, className = "" }: SectionCardProps) {
   return (
-    <Card className={`gap-0 ${className}`}>
-      <CardContent className="grid gap-5 p-5">{children}</CardContent>
+    <Card className={`gap-0 py-0 ${className}`}>
+      <CardContent className="grid gap-6 p-6">{children}</CardContent>
     </Card>
   );
 }
@@ -99,12 +99,14 @@ interface SectionHeadProps {
 
 export function SectionHead({ title, subtitle = null, action = null }: SectionHeadProps) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base font-semibold leading-6 text-foreground">{title}</h3>
+        {subtitle ? (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{subtitle}</p>
+        ) : null}
       </div>
-      {action}
+      {action ? <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div> : null}
     </div>
   );
 }
@@ -116,8 +118,8 @@ interface SubSectionProps {
 
 export function SubSection({ title, children }: SubSectionProps) {
   return (
-    <div className="grid gap-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="grid gap-3 border-t pt-5 first:border-t-0 first:pt-0">
+      <h4 className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {title}
       </h4>
       {children}
@@ -126,5 +128,9 @@ export function SubSection({ title, children }: SubSectionProps) {
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
+  return (
+    <div className="grid place-items-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
 }

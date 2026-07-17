@@ -1,15 +1,4 @@
-import type { GenerationSettings, ModelOption, PromptTemplate, TestCase } from "@/lib/types/domain";
-
-export const CAUSE_TAG_OPTIONS = [
-  "Travel",
-  "Fees",
-  "Equipment",
-  "Supplies",
-  "Facilites",
-  "Scholarships",
-  "Celebration",
-  "Tournament",
-] as const;
+import type { GenerationSettings, ModelOption } from "@/lib/types/domain";
 
 export const MODEL_OPTIONS: ModelOption[] = [
   {
@@ -163,43 +152,9 @@ export const MODEL_PRICING = Object.fromEntries(
   ]),
 ) as Record<string, { input: number; output: number }>;
 
-export const DEFAULT_TEST_CASE: Omit<TestCase, "id" | "sourceRecordId" | "sourceType" | "organizationUuid" | "isVerified"> = {
-  name: "",
-  organizationName: "North Ridge Booster Club",
-  teamName: "Girls Volleyball",
-  organizationType: "Sports & Athletics",
-  teamActivity: "Volleyball",
-  teamAffiliation: "High School",
-  causeTags: ["Travel", "Fees", "Equipment"],
-  messageLength: "80-120 words",
-};
-
-export const DEFAULT_PROMPT_TEMPLATE: Omit<PromptTemplate, "id"> = {
-  name: "Default fundraiser recipe",
-  systemPrompt:
-    "Double Good is a virtual fundraising platform that enables groups, teams, and youth-oriented causes to raise funds through a 4-day Pop-Up Store model. Sellers create personalized online stores to sell fresh, made-to-order popcorn, with 50% of proceeds directly supporting their cause. This virtual method provides 3x more sales than traditional fundraising methods. Organizers create an event in the app, share an event code with participants, and each seller creates a Pop-Up Store link to share during the short 4-day fundraiser. You are personalizing the organizer's invite message to a potential seller. Return only the middle section of the note. Make it warm, encouraging, child-safe, and motivating so the seller feels invited to join, help the cause, and make an impact. Use only the provided fields. If selected_cause_tags are provided, treat them as organizer-approved details and weave at least one of them naturally into the message. Do not invent facts, dates, destinations, goals, incentives, or logistics that are not provided. Do not include links, event codes, sign-off lines, or step-by-step joining instructions because the suffix already covers how to join. You may use emojis sparingly if they help the message feel warm and personal. Keep the response readable and engaging within the character budget provided. If the provided fields are insufficient, return EMPTY.",
-  userPromptTemplate:
-    "The final message has three parts:\n1. Prefix: already written and explains when the fundraiser is happening.\n2. Your middle section: explain why the seller should join, participate, and help the cause.\n3. Suffix: already written and explains how to join.\nThe full final message must be no more than ${INVITE_TEAM_MESSAGE_MAX_LENGTH} display characters.\nYour section may use up to ${maxMiddleLength} display characters.\nPrefix: \"${getPromptPrefix(context)}\"\nSuffix: \"${getPromptSuffix(options, context)}\"\nProvided data:\n${getStructuredPrompt(context, maxMiddleLength)}",
-  prefixText: "Hey Team! Our Double Good fundraiser runs from April 6 - 10",
-  suffixText:
-    "\n\n\nWe're selling Double Good's award-winning popcorn and earning 50% of every sale.\n\n\nVisit our fundraising page to learn more on how to get started.\n\n\n" +
-    "dgpopup.store/random-store-link",
-  messageLengthInstruction: "80-120 words",
-  isActive: true,
-};
-
 export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   temperature: 0.7,
   topP: 0.9,
   maxTokens: 180,
   seed: "",
 };
-
-export const DEFAULT_RUBRIC = {
-  clarity: 3,
-  specificity: 3,
-  fundraiserRelevance: 3,
-  emotionalResonance: 3,
-  brandSafety: 3,
-  overall: 3,
-} as const;

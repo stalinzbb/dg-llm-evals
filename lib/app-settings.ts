@@ -1,12 +1,9 @@
 import {
   DEFAULT_GENERATION_SETTINGS,
   DEFAULT_ENABLED_MODEL_IDS,
-  DEFAULT_PROMPT_TEMPLATE,
-  DEFAULT_TEST_CASE,
   getDefaultEnabledModelId,
   normalizeEnabledModelIds,
 } from "@/lib/constants";
-import { normalizePromptTemplate, normalizeTestCase } from "@/lib/prompt";
 import type { AppSettings, Variant } from "@/lib/types/domain";
 
 export function createInitialVariant(enabledModelIds = DEFAULT_ENABLED_MODEL_IDS): Variant {
@@ -28,12 +25,8 @@ export function createDefaultAppSettings(): AppSettings {
   return {
     activeTab: "playground",
     playgroundMode: "single",
-    caseDraft: normalizeTestCase(DEFAULT_TEST_CASE),
-    promptDraft: normalizePromptTemplate(DEFAULT_PROMPT_TEMPLATE),
     generationSettings: { ...DEFAULT_GENERATION_SETTINGS },
     variants: [createInitialVariant(DEFAULT_ENABLED_MODEL_IDS)],
-    batchSelection: [],
-    importedCases: [],
   };
 }
 
@@ -74,6 +67,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       : "";
   const activeTab =
     rawActiveTab === "playground" ||
+    rawActiveTab === "evals" ||
     rawActiveTab === "batch" ||
     rawActiveTab === "batches" ||
     rawActiveTab === "history" ||
@@ -85,14 +79,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   return {
     activeTab,
     playgroundMode: input.playgroundMode === "compare" ? "compare" : defaults.playgroundMode,
-    caseDraft: normalizeTestCase({
-      ...defaults.caseDraft,
-      ...(input.caseDraft || {}),
-    }),
-    promptDraft: normalizePromptTemplate({
-      ...defaults.promptDraft,
-      ...(input.promptDraft || {}),
-    }),
     generationSettings: {
       ...defaults.generationSettings,
       ...(input.generationSettings || {}),
@@ -101,11 +87,5 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       Array.isArray(input.variants) && input.variants.length
         ? input.variants.map((variant, index) => sanitizeVariant(variant, index))
         : defaults.variants,
-    batchSelection: Array.isArray(input.batchSelection)
-      ? input.batchSelection.filter((item): item is string => typeof item === "string")
-      : defaults.batchSelection,
-    importedCases: Array.isArray(input.importedCases)
-      ? input.importedCases.map((item) => normalizeTestCase(item))
-      : defaults.importedCases,
   };
 }

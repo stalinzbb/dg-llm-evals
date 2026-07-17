@@ -14,8 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DEFAULT_RUBRIC_CRITERIA } from "@/lib/eval";
 import type { SaveRatingRequest } from "@/lib/types/api";
 import type { RunMetrics, RunResult } from "@/lib/types/domain";
+import type { RubricCriterion } from "@/lib/types/eval";
 
 function formatCurrency(value: RunMetrics["estimatedCost"]) {
   if (value === null || value === undefined || value === "") {
@@ -24,48 +26,31 @@ function formatCurrency(value: RunMetrics["estimatedCost"]) {
   return `$${value.toFixed(6)}`;
 }
 
-const RATING_FIELDS = [
-  ["clarity", "Clarity"],
-  ["specificity", "Specificity"],
-  ["fundraiserRelevance", "Fundraiser relevance"],
-  ["emotionalResonance", "Emotional resonance"],
-  ["brandSafety", "Brand safety"],
-  ["overall", "Overall"],
-] as const;
-
-type RatingFieldKey = (typeof RATING_FIELDS)[number][0];
-
-interface RatingDraft extends Record<RatingFieldKey, string> {
-  notes: string;
-  winner: boolean;
-}
-
-const INITIAL_RATING: RatingDraft = {
-  brandSafety: "3",
-  clarity: "3",
-  emotionalResonance: "3",
-  fundraiserRelevance: "3",
-  notes: "",
-  overall: "3",
-  specificity: "3",
-  winner: false,
-};
-
 interface ResultCardProps {
   onSaveRating?: (payload: SaveRatingRequest) => Promise<void>;
   result: RunResult;
+  /** Rubric criteria to rate against; defaults to the generic rubric. */
+  rubric?: RubricCriterion[];
   showRating?: boolean;
 }
 
 export default function ResultCard({
   result,
   onSaveRating,
+  rubric,
   showRating = true,
 }: ResultCardProps) {
-  const [view, setView] = useState<"cause" | "full">("cause");
+  const criteria = rubric?.length ? rubric : DEFAULT_RUBRIC_CRITERIA;
+  const [view, setView] = useState<"output" | "full">("output");
   const [showRequestDetails, setShowRequestDetails] = useState(false);
-  const [rating, setRating] = useState<RatingDraft>(INITIAL_RATING);
+  const [scores, setScores] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState("");
+  const [winner, setWinner] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const hasWrappedOutput =
+    Boolean(result.wrappedOutput) && result.wrappedOutput !== result.output;
+  const variableEntries = Object.entries(result.variableValues || {});
 
   async function handleSave() {
     if (!onSaveRating) {
@@ -75,39 +60,34 @@ export default function ResultCard({
     setSaving(true);
     try {
       await onSaveRating(({
-        notes: rating.notes,
-        rubric: {
-          brandSafety: Number(rating.brandSafety),
-          clarity: Number(rating.clarity),
-          emotionalResonance: Number(rating.emotionalResonance),
-          fundraiserRelevance: Number(rating.fundraiserRelevance),
-          overall: Number(rating.overall),
-          specificity: Number(rating.specificity),
-        },
+        notes,
+        rubric: Object.fromEntries(
+          criteria.map((criterion) => [criterion.key, Number(scores[criterion.key] ?? "3")]),
+        ),
         runId: result.runId,
         variantResultId: result.id,
-        winner: rating.winner,
+        winner,
       } as unknown) as SaveRatingRequest);
-      setRating((current) => ({ ...current, notes: "" }));
+      setNotes("");
     } finally {
       setSaving(false);
     }
   }
 
-  const message = view === "cause" ? result.causeStatement : result.fullMessage;
+  const message = view === "output" ? result.output : result.wrappedOutput;
   const characterCount =
-    view === "cause"
-      ? result.metrics?.causeOnlyCharacters || 0
-      : result.metrics?.fullMessageCharacters || 0;
+    view === "output"
+      ? result.metrics?.outputCharacters || 0
+      : result.metrics?.wrappedOutputCharacters || 0;
 
   return (
-    <Card className="gap-0">
-      <CardContent className="grid gap-4 pt-4">
+    <Card className="gap-0 py-0">
+      <CardContent className="grid gap-4 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-medium text-foreground">{result.variantLabel}</p>
             <p className="text-xs text-muted-foreground">
-              {result.model} · {result.promptTemplateName || "Current draft recipe"} · result ID{" "}
+              {result.model} · {result.promptTemplateName || "Current draft"} · result ID{" "}
               {result.id}
             </p>
           </div>
@@ -133,24 +113,38 @@ export default function ResultCard({
           ))}
         </div>
 
-        <div className="flex gap-1">
-          <Button
-            onClick={() => setView("cause")}
-            size="sm"
-            type="button"
-            variant={view === "cause" ? "secondary" : "ghost"}
-          >
-            Cause only
-          </Button>
-          <Button
-            onClick={() => setView("full")}
-            size="sm"
-            type="button"
-            variant={view === "full" ? "secondary" : "ghost"}
-          >
-            Full message
-          </Button>
-        </div>
+        {variableEntries.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {variableEntries.map(([key, value]) => (
+              <Badge className="gap-1 font-normal" key={key} variant="secondary">
+                <span className="font-mono">{key}</span>
+                <span className="max-w-[180px] truncate">{value}</span>
+                {result.variableSources?.[key] === "random" ? <span title="Randomly sampled">🎲</span> : null}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        {hasWrappedOutput ? (
+          <div className="flex gap-1">
+            <Button
+              onClick={() => setView("output")}
+              size="sm"
+              type="button"
+              variant={view === "output" ? "secondary" : "ghost"}
+            >
+              Output only
+            </Button>
+            <Button
+              onClick={() => setView("full")}
+              size="sm"
+              type="button"
+              variant={view === "full" ? "secondary" : "ghost"}
+            >
+              With prefix/suffix
+            </Button>
+          </div>
+        ) : null}
 
         <div className="min-h-[80px] rounded-lg bg-muted p-3 font-mono text-sm whitespace-pre-wrap">
           {result.error ? `Error: ${result.error}` : message}
@@ -198,20 +192,23 @@ export default function ResultCard({
         {showRating ? (
           <div className="grid gap-4 border-t pt-4">
             <div className="grid grid-cols-2 gap-3">
-              {RATING_FIELDS.map(([key, label]) => (
-                <div key={key} className="grid gap-1.5">
-                  <Label htmlFor={`${result.id}-${key}`}>{label}</Label>
+              {criteria.map((criterion) => (
+                <div key={criterion.key} className="grid gap-1.5">
+                  <Label htmlFor={`${result.id}-${criterion.key}`}>{criterion.label}</Label>
                   <Select
                     onValueChange={(value) =>
-                      setRating((current) => ({ ...current, [key]: value }))
+                      setScores((current) => ({ ...current, [criterion.key]: value }))
                     }
-                    value={rating[key]}
+                    value={scores[criterion.key] ?? "3"}
                   >
-                    <SelectTrigger className="w-full" id={`${result.id}-${key}`}>
+                    <SelectTrigger className="w-full" id={`${result.id}-${criterion.key}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5].map((value) => (
+                      {Array.from(
+                        { length: criterion.max - criterion.min + 1 },
+                        (_, i) => criterion.min + i,
+                      ).map((value) => (
                         <SelectItem key={value} value={String(value)}>
                           {value}
                         </SelectItem>
@@ -222,34 +219,24 @@ export default function ResultCard({
               ))}
             </div>
             <div className="grid gap-1.5">
-                <Label htmlFor={`${result.id}-notes`}>Review notes</Label>
-                <Textarea
-                  id={`${result.id}-notes`}
-                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-                    setRating((current) => ({ ...current, notes: event.target.value }))
-                  }
-                  placeholder="Why is this good or weak? What should change in the prompt?"
-                value={rating.notes}
+              <Label htmlFor={`${result.id}-notes`}>Review notes</Label>
+              <Textarea
+                id={`${result.id}-notes`}
+                onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNotes(event.target.value)}
+                placeholder="Why is this good or weak? What should change in the prompt?"
+                value={notes}
               />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  checked={rating.winner}
+                  checked={winner}
                   id={`${result.id}-winner`}
-                  onCheckedChange={(checked: boolean) =>
-                    setRating((current) => ({ ...current, winner: Boolean(checked) }))
-                  }
+                  onCheckedChange={(checked: boolean) => setWinner(Boolean(checked))}
                 />
                 <Label htmlFor={`${result.id}-winner`}>Mark as preferred output</Label>
               </div>
-              <Button
-                disabled={saving}
-                onClick={handleSave}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
+              <Button disabled={saving} onClick={handleSave} size="sm" type="button" variant="outline">
                 {saving ? "Saving…" : "Save rating"}
               </Button>
             </div>

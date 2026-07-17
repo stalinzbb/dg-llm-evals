@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { readStoredOpenRouterKey, writeStoredOpenRouterKey } from "@/lib/workspace-browser";
+
 import WorkspacePageHeader from "@/components/workspace-page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,6 @@ import {
 import { MODEL_OPTIONS } from "@/lib/constants";
 import {
   getModelConfigurationState,
-  getSourcePoolSummary,
   sanitizeModelConfigurationIds,
 } from "@/lib/workspace-selectors";
 import type { SettingsSectionProps } from "@/lib/types/workspace";
@@ -26,25 +27,39 @@ import { SectionCard, SectionHead } from "./section-primitives";
 
 export function SettingsSection({
   enabledModelIds,
-  handleImportSourcePool,
   handleSaveSettings,
-  sourcePoolImporting,
-  sourcePoolStats,
 }: SettingsSectionProps) {
   const [draftEnabledModelIds, setDraftEnabledModelIds] = useState(() =>
     sanitizeModelConfigurationIds(enabledModelIds),
   );
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState("");
 
   useEffect(() => {
     setDraftEnabledModelIds(sanitizeModelConfigurationIds(enabledModelIds));
   }, [enabledModelIds]);
 
+  useEffect(() => {
+    const storedKey = readStoredOpenRouterKey();
+    setApiKeyDraft(storedKey);
+    setApiKeySaved(Boolean(storedKey));
+  }, []);
+
+  function handleSaveApiKey() {
+    writeStoredOpenRouterKey(apiKeyDraft);
+    setApiKeySaved(Boolean(apiKeyDraft.trim()));
+    setApiKeyStatus(
+      apiKeyDraft.trim()
+        ? "Key saved in this browser. It is sent with each run and never stored on the server."
+        : "Key removed from this browser.",
+    );
+  }
+
   const { enabledRunnableCount, hasChanges, selectedEnabledIds } = getModelConfigurationState(
     draftEnabledModelIds,
     enabledModelIds,
   );
-  const sourcePoolSummary = getSourcePoolSummary(sourcePoolStats);
-
   function handleModelToggle(modelValue: string, checked: boolean) {
     setDraftEnabledModelIds((current) => {
       const currentIds = sanitizeModelConfigurationIds(current);
@@ -63,6 +78,33 @@ export function SettingsSection({
       />
 
       <div className="grid gap-6">
+        <SectionCard>
+          <SectionHead
+            action={
+              <Button onClick={handleSaveApiKey} size="sm" type="button">
+                Save key
+              </Button>
+            }
+            subtitle="Bring your own OpenRouter API key. Stored only in this browser's localStorage and attached per-request; without it, runs use the server key if configured, otherwise mock output."
+            title="OpenRouter API Key"
+          />
+          <div className="grid gap-1.5">
+            <Label htmlFor="openrouter-key">API key {apiKeySaved ? "(saved in this browser)" : ""}</Label>
+            <Input
+              autoComplete="off"
+              id="openrouter-key"
+              onChange={(event) => setApiKeyDraft(event.target.value)}
+              placeholder="sk-or-v1-…"
+              type="password"
+              value={apiKeyDraft}
+            />
+            {apiKeyStatus ? <p className="text-xs text-muted-foreground">{apiKeyStatus}</p> : null}
+            <p className="text-xs text-muted-foreground">
+              Get a key at openrouter.ai — one key unlocks every model in the list below.
+            </p>
+          </div>
+        </SectionCard>
+
         <SectionCard>
           <SectionHead
             action={
@@ -124,34 +166,6 @@ export function SettingsSection({
               })}
             </TableBody>
           </Table>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionHead subtitle={sourcePoolSummary} title="Source Pool Management" />
-          <p className="text-xs text-muted-foreground">
-            Expected headers: TEAM NAME, ORGANIZATION_NAME, ORGANIZATION_UUID, ORGANIZATION_TYPE,
-            TEAM_ACTIVITY, TEAM_AFFILIATION.
-          </p>
-          <div className="grid gap-1.5">
-            <Label htmlFor="source-pool-import">Upload Source CSV</Label>
-            <Input
-              accept=".csv,text/csv"
-              id="source-pool-import"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  void handleImportSourcePool(file);
-                }
-                event.target.value = "";
-              }}
-              type="file"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {sourcePoolImporting
-              ? "Importing and replacing the current source pool…"
-              : "Uploading replaces the current source pool."}
-          </p>
         </SectionCard>
       </div>
     </>

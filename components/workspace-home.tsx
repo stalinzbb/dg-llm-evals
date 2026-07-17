@@ -3,10 +3,11 @@ import { useEffect } from "react";
 
 import WorkspaceLayout from "@/components/workspace-layout";
 import WorkspaceStatus from "@/components/workspace-status";
-import { BatchSection, HistorySection, PlaygroundSection } from "@/components/workspace-sections";
+import { BatchSection, EvalsSection, HistorySection, PlaygroundSection } from "@/components/workspace-sections";
 import { useWorkspaceState } from "@/lib/workspace";
 import {
   getBatchSectionProps,
+  getEvalsSectionProps,
   getHistorySectionProps,
   getPlaygroundSectionProps,
   getWorkspaceStatsViewModel,
@@ -15,7 +16,7 @@ import {
 import type { WorkspacePage } from "@/lib/types/domain";
 import type { WorkspaceHomeProps } from "@/lib/types/workspace";
 
-const VALID_PAGES: WorkspacePage[] = ["playground", "batches", "history"];
+const VALID_PAGES: WorkspacePage[] = ["playground", "evals", "batches", "history"];
 
 function normalizeWorkspacePage(value: string | undefined): WorkspacePage {
   if (typeof value !== "string") return "playground";
@@ -38,6 +39,7 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
   const workspaceStatus = getWorkspaceStatusViewModel(workspace);
   const stats = getWorkspaceStatsViewModel(workspace);
   const playgroundSection = getPlaygroundSectionProps(workspace);
+  const evalsSection = getEvalsSectionProps(workspace);
   const batchSection = getBatchSectionProps(workspace);
   const historySection = getHistorySectionProps(workspace);
 
@@ -62,7 +64,7 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
   return (
     <WorkspaceLayout
       currentPage={activePage}
-      description="Generate, compare, batch-run, and review fundraiser message evals from a unified workspace."
+      description="Build evals, compare models, batch-run, and review results from a unified workspace."
       onNavClick={(page: WorkspacePage) => workspace.setActivePage(page)}
       stats={stats}
       theme={workspace.theme}
@@ -71,6 +73,7 @@ export default function WorkspaceHome({ initialTab = "playground" }: WorkspaceHo
     >
       <WorkspaceStatus workspace={workspaceStatus} />
       {!workspace.loading && activePage === "playground" && <PlaygroundSection {...playgroundSection} />}
+      {!workspace.loading && activePage === "evals" && <EvalsSection {...evalsSection} />}
       {!workspace.loading && activePage === "batches" && <BatchSection {...batchSection} />}
       {!workspace.loading && activePage === "history" && <HistorySection {...historySection} />}
     </WorkspaceLayout>

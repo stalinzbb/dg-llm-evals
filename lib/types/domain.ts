@@ -1,3 +1,5 @@
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+
 export interface ModelOption {
   label: string;
   value: string;
@@ -41,33 +43,6 @@ export interface NormalizedVariant {
   seed: string;
 }
 
-export interface TestCase {
-  id: string | null;
-  sourceRecordId: string | null;
-  sourceType: string | null;
-  organizationUuid: string | null;
-  isVerified: boolean;
-  name: string;
-  organizationName: string;
-  teamName: string;
-  organizationType: string;
-  teamActivity: string;
-  teamAffiliation: string;
-  causeTags: string[];
-  messageLength: string;
-}
-
-export interface PromptTemplate {
-  id: string | null;
-  name: string;
-  systemPrompt: string;
-  userPromptTemplate: string;
-  prefixText: string;
-  suffixText: string;
-  messageLengthInstruction: string;
-  isActive: boolean;
-}
-
 export type RunMode = "single" | "compare" | "batch";
 export type RunStatus = "running" | "completed" | "failed";
 
@@ -77,8 +52,8 @@ export interface RunMetrics {
   totalTokens: number;
   estimatedCost: number | null | "";
   latencyMs: number | "";
-  causeOnlyCharacters?: number;
-  fullMessageCharacters?: number;
+  outputCharacters?: number;
+  wrappedOutputCharacters?: number;
 }
 
 export interface PricingInfo {
@@ -106,12 +81,17 @@ export interface RunResult {
   userPrompt: string;
   prefixText: string;
   suffixText: string;
-  causeStatement: string;
-  fullMessage: string;
+  output: string;
+  wrappedOutput: string;
   metrics: RunMetrics;
   pricing: PricingInfo | null;
   provider: string;
-  inputSnapshot: TestCase;
+  /** Legacy fundraiser-case snapshot; present on runs created before evals existed. */
+  inputSnapshot?: Record<string, unknown> | null;
+  /** Resolved template variable values used for this result. */
+  variableValues?: Record<string, string>;
+  /** Where each variable value came from (manual | random | csv | default | empty). */
+  variableSources?: Record<string, string>;
   error: string | null;
 }
 
@@ -126,8 +106,9 @@ export interface Rating {
 }
 
 export interface RunRecordPayload {
-  caseSnapshot?: TestCase;
-  promptSnapshot?: PromptTemplate;
+  evalId?: string | null;
+  evalSnapshot?: EvalDefinition;
+  templateId?: string;
   variantConfigs?: NormalizedVariant[];
   generationDefaults?: GenerationSettings;
   caseCount?: number;
@@ -147,19 +128,15 @@ export interface Run {
   ratings: Rating[];
 }
 
-export type WorkspacePage = "playground" | "batches" | "history" | "settings";
+export type WorkspacePage = "playground" | "evals" | "batches" | "history" | "settings";
 export type PlaygroundMode = "single" | "compare";
 export type Theme = "light" | "dark";
 
 export interface AppSettings {
   activeTab: WorkspacePage;
   playgroundMode: PlaygroundMode;
-  caseDraft: TestCase;
-  promptDraft: PromptTemplate;
   generationSettings: GenerationSettings;
   variants: Variant[];
-  batchSelection: string[];
-  importedCases: TestCase[];
 }
 
 export interface WorkspaceSettings {
@@ -171,37 +148,15 @@ export interface PlatformStatus {
   gateEnabled: boolean;
 }
 
-export interface SourcePoolStats {
-  total: number;
-  verified: number;
-  unverified: number;
-}
-
-export interface SourcePoolRecord {
-  id: string;
-  importBatchId: string;
-  name: string;
-  organizationName: string;
-  teamName: string;
-  organizationUuid: string | null;
-  isVerified: boolean;
-  organizationType: string;
-  teamActivity: string;
-  teamAffiliation: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface BootstrapData {
   storageMode: "local" | "supabase";
   appSettingsStorageMode: "browser" | "supabase";
   appSettings: AppSettings;
   workspaceSettingsStorageMode: "browser" | "supabase";
   settings: WorkspaceSettings;
-  testCases: TestCase[];
-  promptTemplates: PromptTemplate[];
+  evals: EvalDefinition[];
+  datasets: Dataset[];
   runs: Run[];
-  sourcePoolStats: SourcePoolStats;
 }
 
 export interface OpenRouterCompletionUsage {
@@ -212,7 +167,7 @@ export interface OpenRouterCompletionUsage {
 
 export interface OpenRouterCompletionResult {
   provider: string;
-  causeStatement: string;
+  output: string;
   usage: OpenRouterCompletionUsage;
   estimatedCost: number | null;
   latencyMs: number;

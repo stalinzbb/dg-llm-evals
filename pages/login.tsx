@@ -62,10 +62,10 @@ export default function LoginPage() {
             <div className="mb-2 text-xs tracking-[0.14em] uppercase text-[color:var(--ink-muted)]">
               Private workspace
             </div>
-            <h1>Open Eval AI.</h1>
+            <h1 className="text-4xl font-semibold tracking-tight">Open Eval AI.</h1>
             <p className="mt-2 max-w-[68ch] text-[color:var(--ink-soft)]">
-              A lightweight internal tool for prompt experiments, batch runs, and saved output
-              review across fundraiser messaging workflows.
+              A lightweight tool for building evals, running prompt experiments and batch runs,
+              and reviewing saved outputs across models.
             </p>
             <div className="mt-[22px] grid gap-3 sm:grid-cols-2 max-[720px]:grid-cols-1">
               <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--surface-muted)] p-4">

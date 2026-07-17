@@ -1,9 +1,5 @@
 import { MODEL_PRICING } from "@/lib/constants";
-import type {
-  GenerationSettings,
-  OpenRouterCompletionResult,
-  TestCase,
-} from "@/lib/types/domain";
+import type { GenerationSettings, OpenRouterCompletionResult } from "@/lib/types/domain";
 
 function estimateTokensFromText(text: string) {
   return Math.max(1, Math.ceil(text.length / 4));
@@ -35,9 +31,9 @@ function parseTextContent(content: unknown) {
   return "";
 }
 
-function buildMockCause(testCase: TestCase) {
-  const tags = testCase.causeTags.length ? testCase.causeTags.join(", ") : "team needs";
-  return `${testCase.teamName} is raising funds to cover ${tags} so athletes at ${testCase.organizationName} can keep showing up fully prepared for ${testCase.teamActivity.toLowerCase()}. Every contribution helps ease costs for families while giving the team reliable support and a stronger season ahead.`;
+function buildMockOutput(userPrompt: string) {
+  const excerpt = userPrompt.replace(/\s+/g, " ").trim().slice(0, 160);
+  return `[Mock output — set an OpenRouter API key in Settings to call real models.] Based on the provided input (“${excerpt}…”), here is a sample response demonstrating how generated content will appear in results.`;
 }
 
 export async function requestCompletion({
@@ -45,23 +41,24 @@ export async function requestCompletion({
   systemPrompt,
   userPrompt,
   generationSettings,
-  testCase,
+  apiKey,
 }: {
   model: string;
   systemPrompt: string;
   userPrompt: string;
   generationSettings: GenerationSettings;
-  testCase: TestCase;
+  /** Bring-your-own-key; falls back to the server env key, then mock mode. */
+  apiKey?: string | null;
 }): Promise<OpenRouterCompletionResult> {
   const promptTokenEstimate = estimateTokensFromText(`${systemPrompt}\n${userPrompt}`);
-  const key = process.env.OPENROUTER_API_KEY;
+  const key = apiKey?.trim() || process.env.OPENROUTER_API_KEY;
 
   if (!key) {
-    const causeStatement = buildMockCause(testCase);
-    const completionTokens = estimateTokensFromText(causeStatement);
+    const output = buildMockOutput(userPrompt);
+    const completionTokens = estimateTokensFromText(output);
     return {
       provider: "mock",
-      causeStatement,
+      output,
       usage: {
         promptTokens: promptTokenEstimate,
         completionTokens,
@@ -80,7 +77,7 @@ export async function requestCompletion({
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-      "X-Title": process.env.OPENROUTER_TITLE || "DG Fundraiser LLM Eval Tool",
+      "X-Title": process.env.OPENROUTER_TITLE || "LLM Eval Builder",
     },
     body: JSON.stringify({
       model,
@@ -109,14 +106,14 @@ export async function requestCompletion({
     throw new Error(payload?.error?.message || "OpenRouter request failed.");
   }
 
-  const causeStatement = parseTextContent(payload?.choices?.[0]?.message?.content);
+  const output = parseTextContent(payload?.choices?.[0]?.message?.content);
   const promptTokens = payload?.usage?.prompt_tokens ?? promptTokenEstimate;
-  const completionTokens = payload?.usage?.completion_tokens ?? estimateTokensFromText(causeStatement);
+  const completionTokens = payload?.usage?.completion_tokens ?? estimateTokensFromText(output);
   const totalTokens = payload?.usage?.total_tokens ?? promptTokens + completionTokens;
 
   return {
     provider: "openrouter",
-    causeStatement,
+    output,
     usage: {
       promptTokens,
       completionTokens,

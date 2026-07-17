@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { executePlaygroundRun } from "@/lib/runner";
-import type { ApiErrorResponse, GenerateRunRequest, RunResponse } from "@/lib/types/api";
+import { executeEvalRun } from "@/lib/runner";
+import type { ApiErrorResponse, EvalRunRequest, RunResponse } from "@/lib/types/api";
+
+export function getRequestApiKey(req: NextApiRequest): string | null {
+  const header = req.headers["x-openrouter-key"];
+  const value = Array.isArray(header) ? header[0] : header;
+  return value?.trim() || null;
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +20,9 @@ export default async function handler(
   }
 
   try {
-    const run = await executePlaygroundRun(req.body as GenerateRunRequest);
+    const run = await executeEvalRun(req.body as EvalRunRequest, {
+      apiKey: getRequestApiKey(req),
+    });
     if (!run) {
       res.status(500).json({ error: "Generation completed without a run payload." });
       return;

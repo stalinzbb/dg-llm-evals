@@ -3,16 +3,12 @@ import * as supabaseStore from "@/lib/supabase-store";
 import type {
   AppSettings,
   BootstrapData,
-  PromptTemplate,
   Rating,
   Run,
   RunResult,
-  SourcePoolRecord,
-  SourcePoolStats,
-  TestCase,
   WorkspaceSettings,
 } from "@/lib/types/domain";
-import type { SourcePoolImportResponse, SourcePoolSampleResponse } from "@/lib/types/api";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
 
 type StoreModule = typeof localStore;
 
@@ -50,38 +46,12 @@ export function getAppSettings(): Promise<AppSettings> {
   return withFallback("getAppSettings");
 }
 
-export function listTestCasesByIds(ids: string[]): Promise<TestCase[]> {
-  return withFallback("listTestCasesByIds", ids);
-}
-
-export function getPromptTemplateById(id: string): Promise<PromptTemplate | null> {
-  return withFallback("getPromptTemplateById", id);
-}
-
-export function saveTestCases(entries: TestCase[] | TestCase): Promise<TestCase[]> {
-  return withFallback("saveTestCases", entries);
-}
-
 export function saveWorkspaceSettings(entry: Partial<WorkspaceSettings>): Promise<WorkspaceSettings> {
   return withFallback("saveWorkspaceSettings", entry);
 }
 
 export function saveAppSettings(entry: Partial<AppSettings>): Promise<AppSettings> {
   return withFallback("saveAppSettings", entry);
-}
-
-export function savePromptTemplate(
-  entry: PromptTemplate & { createdAt?: string },
-): Promise<PromptTemplate> {
-  return withFallback("savePromptTemplate", entry);
-}
-
-export function deleteTestCase(id: string): Promise<TestCase[]> {
-  return withFallback("deleteTestCase", id);
-}
-
-export function deletePromptTemplate(id: string): Promise<PromptTemplate[]> {
-  return withFallback("deletePromptTemplate", id);
 }
 
 export function createRun(
@@ -106,26 +76,36 @@ export function getRunById(runId: string): Promise<Run | null> {
   return withFallback("getRunById", runId);
 }
 
-export function getSourcePoolStats(): Promise<SourcePoolStats> {
-  return withFallback("getSourcePoolStats");
+export function listEvals(): Promise<EvalDefinition[]> {
+  return withFallback("listEvals");
 }
 
-export function importSourcePool(
-  entries: SourcePoolRecord[] | Record<string, string>[],
-  options?: { replace?: boolean },
-): Promise<SourcePoolImportResponse> {
-  return withFallback("importSourcePool", entries, options);
+export function getEvalById(id: string): Promise<EvalDefinition | null> {
+  return withFallback("getEvalById", id);
 }
 
-export function getRandomSourcePoolRecord(
-  verificationFilter?: "any" | "verified" | "unverified",
-): Promise<SourcePoolRecord | null> {
-  return withFallback("getRandomSourcePoolRecord", verificationFilter);
+export function saveEval(
+  entry: Partial<EvalDefinition> & { createdAt?: string },
+): Promise<EvalDefinition> {
+  return withFallback("saveEval", entry);
 }
 
-export function sampleSourcePool(options?: {
-  count?: number;
-  verificationFilter?: "any" | "verified" | "unverified";
-}): Promise<SourcePoolSampleResponse> {
-  return withFallback("sampleSourcePool", options);
+export function deleteEval(id: string): Promise<EvalDefinition[]> {
+  return withFallback("deleteEval", id);
+}
+
+export function listDatasets(): Promise<Dataset[]> {
+  return withFallback("listDatasets");
+}
+
+export function getDatasetById(id: string): Promise<Dataset | null> {
+  return withFallback("getDatasetById", id);
+}
+
+export function saveDataset(entry: Partial<Dataset> & { createdAt?: string }): Promise<Dataset> {
+  return withFallback("saveDataset", entry);
+}
+
+export function deleteDataset(id: string): Promise<Dataset[]> {
+  return withFallback("deleteDataset", id);
 }

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { normalizeRuns } from "@/lib/runs";
 import { getBootstrapData } from "@/lib/store";
 import type { ApiErrorResponse, RunsResponse } from "@/lib/types/api";
 
@@ -9,7 +10,7 @@ export default async function handler(
 ) {
   try {
     const payload = await getBootstrapData();
-    res.status(200).json({ runs: payload.runs });
+    res.status(200).json({ runs: normalizeRuns(payload.runs) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch runs.";
     res.status(500).json({ error: message || "Failed to fetch runs." });

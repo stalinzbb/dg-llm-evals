@@ -1,14 +1,5 @@
 import { MODEL_OPTIONS, getDefaultEnabledModelId, getEnabledModelOptions } from "@/lib/constants";
-import { getPromptTemplateSignature, getTestCaseSignature, normalizePromptTemplate, normalizeTestCase } from "@/lib/prompt";
-import type {
-  ModelOption,
-  PlatformStatus,
-  PromptTemplate,
-  Run,
-  SourcePoolStats,
-  TestCase,
-  Variant,
-} from "@/lib/types/domain";
+import type { ModelOption, PlatformStatus, Run, Variant } from "@/lib/types/domain";
 import type { WorkspaceStatItem } from "@/lib/types/workspace";
 
 export function getAvailableModelOptions(enabledModelIds: string[]): ModelOption[] {
@@ -48,28 +39,11 @@ export function getFilteredRuns(runs: Run[], search: string): Run[] {
   });
 }
 
-export function getCaseDraftSignature(caseDraft: TestCase): string {
-  return getTestCaseSignature(normalizeTestCase(caseDraft));
-}
-
-export function getPromptDraftSignature(promptDraft: PromptTemplate): string {
-  return getPromptTemplateSignature(normalizePromptTemplate(promptDraft));
-}
-
-export function getCaseMatchesExisting(testCases: TestCase[], signature: string): boolean {
-  return testCases.some((item) => getTestCaseSignature(item) === signature);
-}
-
-export function getPromptMatchesExisting(promptTemplates: PromptTemplate[], signature: string): boolean {
-  return promptTemplates.some((item) => getPromptTemplateSignature(item) === signature);
-}
-
 export function getWorkspaceStatItems(args: {
   platformStatus: PlatformStatus;
-  promptTemplateCount: number;
+  evalCount: number;
+  datasetCount: number;
   runCount: number;
-  sourcePoolStats: SourcePoolStats;
-  testCaseCount: number;
   workspaceSaveState: string;
 }): WorkspaceStatItem[] {
   return [
@@ -77,16 +51,11 @@ export function getWorkspaceStatItems(args: {
       label: "Generation",
       value: args.platformStatus.openRouterConfigured ? "OpenRouter live" : "Mock mode",
     },
-    { label: "Cases", value: args.testCaseCount },
-    { label: "Prompts", value: args.promptTemplateCount },
+    { label: "Evals", value: args.evalCount },
+    { label: "Datasets", value: args.datasetCount },
     { label: "Runs", value: args.runCount },
-    { label: "Source pool", value: args.sourcePoolStats.total },
     { label: "Workspace", value: args.workspaceSaveState },
   ];
-}
-
-export function getSourcePoolSummary(sourcePoolStats: SourcePoolStats): string {
-  return `Current pool: ${sourcePoolStats.total} rows, ${sourcePoolStats.verified} verified, ${sourcePoolStats.unverified} unverified.`;
 }
 
 export function sanitizeModelConfigurationIds(value: unknown): string[] {

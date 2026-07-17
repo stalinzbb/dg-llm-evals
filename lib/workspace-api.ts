@@ -1,21 +1,16 @@
 import type {
   ApiErrorResponse,
   AppSettingsResponse,
-  BatchRunRequest,
   BootstrapResponse,
-  GenerateRunRequest,
-  PromptTemplatesResponse,
+  EvalRunRequest,
   RunResponse,
   RunsResponse,
   SaveRatingRequest,
-  SourcePoolImportResponse,
-  SourcePoolRandomResponse,
-  SourcePoolSampleResponse,
-  SourcePoolStatsResponse,
-  TestCasesResponse,
   WorkspaceSettingsResponse,
 } from "@/lib/types/api";
-import type { AppSettings, PromptTemplate, TestCase, WorkspaceSettings } from "@/lib/types/domain";
+import type { AppSettings, WorkspaceSettings } from "@/lib/types/domain";
+import type { Dataset, EvalDefinition } from "@/lib/types/eval";
+import { readStoredOpenRouterKey } from "@/lib/workspace-browser";
 
 async function readJson<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
@@ -55,6 +50,15 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   return readJson<T>(await fetch(input, init));
 }
 
+function buildGenerationHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const apiKey = readStoredOpenRouterKey();
+  if (apiKey) {
+    headers["x-openrouter-key"] = apiKey;
+  }
+  return headers;
+}
+
 export function fetchBootstrap() {
   return requestJson<BootstrapResponse>("/api/bootstrap");
 }
@@ -75,50 +79,18 @@ export function saveWorkspaceSettingsRequest(settings: Partial<WorkspaceSettings
   });
 }
 
-export function saveTestCasesRequest(entries: TestCase[] | TestCase) {
-  return requestJson<TestCasesResponse>("/api/test-cases", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entries }),
-  });
-}
-
-export function deleteTestCaseRequest(id: string) {
-  return requestJson<TestCasesResponse>("/api/test-cases", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id }),
-  });
-}
-
-export function savePromptTemplateRequest(prompt: PromptTemplate) {
-  return requestJson<PromptTemplatesResponse>("/api/prompt-templates", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(prompt),
-  });
-}
-
-export function deletePromptTemplateRequest(id: string) {
-  return requestJson<PromptTemplatesResponse>("/api/prompt-templates", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id }),
-  });
-}
-
-export function generateRunRequest(payload: GenerateRunRequest) {
+export function generateRunRequest(payload: EvalRunRequest) {
   return requestJson<RunResponse>("/api/generate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildGenerationHeaders(),
     body: JSON.stringify(payload),
   });
 }
 
-export function batchRunRequest(payload: BatchRunRequest) {
+export function batchRunRequest(payload: EvalRunRequest) {
   return requestJson<RunResponse>("/api/batch-runs", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildGenerationHeaders(),
     body: JSON.stringify(payload),
   });
 }
@@ -135,41 +107,42 @@ export function saveRatingRequest(payload: SaveRatingRequest) {
   });
 }
 
-export function fetchSourcePoolStatsRequest() {
-  return requestJson<SourcePoolStatsResponse>("/api/source-pool");
+export function fetchEvalsRequest() {
+  return requestJson<{ evals: EvalDefinition[] }>("/api/evals");
 }
 
-export function importSourcePoolChunkRequest(entries: Record<string, string>[], replace: boolean) {
-  return requestJson<SourcePoolImportResponse>("/api/source-pool", {
+export function saveEvalRequest(entry: Partial<EvalDefinition>) {
+  return requestJson<{ evals: EvalDefinition[]; saved?: EvalDefinition }>("/api/evals", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "import",
-      entries,
-      replace,
-    }),
+    body: JSON.stringify(entry),
   });
 }
 
-export function randomSourcePoolRowRequest(verificationFilter: "any" | "verified" | "unverified" = "any") {
-  return requestJson<SourcePoolRandomResponse>("/api/source-pool", {
-    method: "POST",
+export function deleteEvalRequest(id: string) {
+  return requestJson<{ evals: EvalDefinition[] }>("/api/evals", {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "random", verificationFilter }),
+    body: JSON.stringify({ id }),
   });
 }
 
-export function sampleSourcePoolRequest(options: {
-  count: number;
-  verificationFilter: "any" | "verified" | "unverified";
-}) {
-  return requestJson<SourcePoolSampleResponse>("/api/source-pool", {
+export function fetchDatasetsRequest() {
+  return requestJson<{ datasets: Dataset[] }>("/api/datasets");
+}
+
+export function saveDatasetRequest(entry: Partial<Dataset>) {
+  return requestJson<{ datasets: Dataset[]; saved?: Dataset }>("/api/datasets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "sample",
-      count: options.count,
-      verificationFilter: options.verificationFilter,
-    }),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteDatasetRequest(id: string) {
+  return requestJson<{ datasets: Dataset[] }>("/api/datasets", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
   });
 }
